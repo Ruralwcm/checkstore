@@ -215,7 +215,7 @@
       <div class="upload-area" onclick="document.getElementById('photo-input').click()">
         <input type="file" id="photo-input" accept="image/*" multiple onchange="onPhotosSelected(event)">
         <div style="font-size:32px">📸</div>
-        <p>Bấm để chọn ảnh (tối đa 5 ảnh)<br><small>Tự động nén về &lt;400KB</small></p>
+        <p>Bấm để chọn ảnh (tối đa 3 ảnh)<br><small>Tự động nén về &lt;300KB</small></p>
       </div>
       <div class="preview-wrap" id="preview-wrap"></div>
       <div class="file-info" id="file-info"></div>
@@ -327,11 +327,11 @@ function goToForm() {
 // ── Ảnh: resize < 400KB ──────────────────────────────────────
 function onPhotosSelected(e) {
   const files = Array.from(e.target.files);
-  if (PHOTOS.length + files.length > 5) {
-    showToast('⚠️ Tối đa 5 ảnh!', true); return;
+  if (PHOTOS.length + files.length > 3) {
+    showToast('⚠️ Tối đa 3 ảnh!', true); return;
   }
   files.forEach(file => {
-    resizeImage(file, 400 * 1024, (base64, finalSize) => {
+    resizeImage(file, 300 * 1024, (base64, finalSize) => {
       // Kiểm tra dấu đỏ trước khi thêm ảnh
       detectRedSeal(base64, (valid, info) => {
         if (!valid) {
