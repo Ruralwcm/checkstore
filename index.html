@@ -229,7 +229,7 @@
 <div id="toast"></div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycby20babg4j7LtuWJNb-oopE-y2WlenRIYvbDbXvjZbQa40_LOGFgv88KVNQDTUHmhkc7g/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxdzopwUqw1RTQF2-If_FR7sUFTGfCn177TmdbNfLm-ejne6A2nE_j7ElyxAEGp51CdbQ/exec';
 
 // ── State ─────────────────────────────────────────────────────
 let SELECTED_GDV  = '';
@@ -409,6 +409,24 @@ function submitForm() {
   if (!document.getElementById('ngay_check').value || !document.getElementById('gio_vao').value) {
     showToast('⚠️ Vui lòng điền Ngày và Giờ vào!', true); return;
   }
+  // Validate tất cả radio phải được chọn
+  const allRadioGroups = [
+    ...BASIC_ITEMS.map(i=>i.id),
+    ...KHO_ITEMS.map(i=>i.id),
+    ...DATE_ITEMS.map(i=>i.id),
+    ...BT_ITEMS.map(i=>i.id),
+  ];
+  for (const name of allRadioGroups) {
+    if (!document.querySelector(`input[name="${name}"]:checked`)) {
+      // Tìm tên tiêu chí để thông báo rõ hơn
+      const allItems = [...BASIC_ITEMS,...KHO_ITEMS,...DATE_ITEMS,...BT_ITEMS];
+      const item = allItems.find(i=>i.id===name);
+      showToast(`⚠️ Vui lòng chọn đánh giá: "${item ? item.label : name}"`, true);
+      return;
+    }
+  }
+
+  // Validate diễn giải bắt buộc
   for (const id of ['bs_dienGiai','kho_dienGiai','date_dienGiai','bt_dienGiai']) {
     if (!document.getElementById(id).value.trim()) {
       showToast('⚠️ Vui lòng điền đầy đủ tất cả ô Diễn giải!', true); return;
@@ -426,17 +444,17 @@ function submitForm() {
           btn.disabled = false; btn.textContent = '✅ Gửi báo cáo kiểm tra';
           showToast(`❌ Vị trí lệch ${Math.round(dist)}m (tối đa 100m)!`, true); return;
         }
-        _doSubmit(ch, pos.coords);
+        _doSubmit(ch, '✅ Đạt');
       },
       () => { btn.disabled=false; btn.textContent='✅ Gửi báo cáo kiểm tra'; showToast('❌ Không lấy được GPS. Bật định vị!', true); },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   } else {
-    _doSubmit(ch, null);
+    _doSubmit(ch, '⚪ Không kiểm tra');
   }
 }
 
-function _doSubmit(ch, coords) {
+function _doSubmit(ch, geoStatus) {
   const btn = document.getElementById('btn_submit');
   btn.disabled = true; btn.textContent = '⏳ Đang gửi...';
 
@@ -447,8 +465,7 @@ function _doSubmit(ch, coords) {
     ngay_check: document.getElementById('ngay_check').value,
     gio_vao: document.getElementById('gio_vao').value,
     gio_ra:  document.getElementById('gio_ra').value,
-    submit_lat: coords ? coords.latitude  : '',
-    submit_lng: coords ? coords.longitude : '',
+    geo_status: geoStatus,
     bs_tacphong:getRadio('bs_tacphong'), bs_tuvan:getRadio('bs_tuvan'),
     bs_taggia:  getRadio('bs_taggia'),   bs_bienbang:getRadio('bs_bienbang'),
     bs_hero:    getRadio('bs_hero'),     bs_tu:getRadio('bs_tu'),
