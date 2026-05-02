@@ -333,15 +333,20 @@ function onPhotosSelected(e) {
   files.forEach(file => {
     resizeImage(file, 400 * 1024, (base64, finalSize) => {
       // Kiểm tra dấu đỏ trước khi thêm ảnh
-      detectRedSeal(base64, (hasSeal, ratio) => {
-        if (!hasSeal) {
-          showToast('❌ Ảnh "' + file.name + '" không phát hiện dấu đỏ xác nhận! Vui lòng chụp lại biên bản có đóng dấu.', true);
+      detectRedSeal(base64, (valid, info) => {
+        if (!valid) {
+          let reason = '';
+          if (info.white < 0.40) reason = 'ảnh không phải tờ giấy';
+          else if (info.black < 0.01) reason = 'không có nội dung văn bản';
+          else if (info.red < 0.0002) reason = 'không phát hiện dấu đỏ';
+          else reason = 'tỷ lệ đỏ quá cao (không phải dấu đỏ)';
+          showToast('❌ ' + file.name + ': ' + reason + '. Vui lòng chụp lại biên bản có đóng dấu đỏ!', true);
           renderPreviews();
           return;
         }
         PHOTOS.push({ base64, name: file.name, size: finalSize });
         renderPreviews();
-        showToast('✅ Ảnh hợp lệ — đã phát hiện dấu đỏ xác nhận!');
+        showToast('✅ Ảnh hợp lệ — phát hiện dấu đỏ xác nhận!');
       });
     });
   });
@@ -349,9 +354,11 @@ function onPhotosSelected(e) {
 }
 
 
-// ── Detect dấu đỏ ────────────────────────────────────────────
-// Quét TOÀN ẢNH — R>130, G<110, B<110, diff>50 → >= 0.02% pixel = có dấu
-// (Ảnh mẫu thực tế: 0.082% → ngưỡng 0.02% cho dư địa 4x)
+// ── Detect dấu đỏ trên tờ giấy ──────────────────────────────
+// 3 điều kiện PHẢI ĐỦ CẢ 3:
+//   1. Nền trắng (giấy) > 40% → là tờ giấy
+//   2. Chữ đen > 1%           → có nội dung in
+//   3. Đỏ trong khoảng 0.02%-2% → dấu đỏ (không phải cờ/banner đỏ)
 function detectRedSeal(base64, callback) {
   const img = new Image();
   img.onload = function() {
@@ -364,20 +371,32 @@ function detectRedSeal(base64, callback) {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    let redCount = 0;
+    let redCount = 0, whiteCount = 0, blackCount = 0;
     const total = canvas.width * canvas.height;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i], g = data[i+1], b = data[i+2];
-      // Pixel đỏ đậm: R>130, G<110, B<110, chênh lệch R-G và R-B > 50
-      if (r > 130 && g < 110 && b < 110 && (r - g) > 50 && (r - b) > 50) {
-        redCount++;
-      }
+      // Đỏ đậm: R>130, G<110, B<110, chênh lệch >50
+      if (r > 130 && g < 110 && b < 110 && (r-g) > 50 && (r-b) > 50) redCount++;
+      // Trắng: tất cả channel > 200
+      if (r > 200 && g > 200 && b > 200) whiteCount++;
+      // Đen: tất cả channel < 80
+      if (r < 80 && g < 80 && b < 80) blackCount++;
     }
 
-    const ratio = redCount / total;
-    // Ngưỡng: >= 0.02% toàn ảnh → có dấu đỏ
-    callback(ratio >= 0.0002, ratio);
+    const redRatio   = redCount   / total;
+    const whiteRatio = whiteCount / total;
+    const blackRatio = blackCount / total;
+
+    // Điều kiện 1: là tờ giấy (trắng > 40%)
+    const isDocument = whiteRatio >= 0.40;
+    // Điều kiện 2: có chữ in (đen > 1%)
+    const hasText    = blackRatio >= 0.01;
+    // Điều kiện 3: có dấu đỏ (0.02% - 2%), không phải ảnh cờ/banner
+    const hasSeal    = redRatio >= 0.0002 && redRatio <= 0.02;
+
+    const valid = isDocument && hasText && hasSeal;
+    callback(valid, { red: redRatio, white: whiteRatio, black: blackRatio });
   };
   img.src = base64;
 }
