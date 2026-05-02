@@ -28,6 +28,16 @@
   .grid-table th { background: #ebf0fa; color: #1a3c6e; padding: 7px 5px; text-align: center; font-size: 11px; border: 1px solid #e2e8f0; }
   .grid-table td { padding: 7px 5px; border: 1px solid #e2e8f0; vertical-align: middle; }
   .grid-table tr:nth-child(even) td { background: #f7fafc; }
+  /* Auth overlay */
+  #auth-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; align-items:center; justify-content:center; }
+  #auth-overlay.show { display:flex; }
+  .auth-box { background:white; border-radius:14px; padding:28px 24px; width:320px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,.2); }
+  .auth-box h2 { font-size:16px; color:#1a3c6e; margin-bottom:6px; }
+  .auth-box p  { font-size:12px; color:#718096; margin-bottom:16px; }
+  .auth-box input { width:100%; padding:10px 12px; border:1px solid #cbd5e0; border-radius:8px; font-size:14px; margin-bottom:12px; }
+  .auth-btn { width:100%; padding:11px; background:linear-gradient(135deg,#1a3c6e,#2d6abf); color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; }
+  .auth-err { color:#e53e3e; font-size:12px; margin-top:8px; display:none; }
+  #form-wrap { display:none; }
   .grid-table td:first-child { font-weight: 500; padding-left: 8px; }
   .grid-table td:not(:first-child) { text-align: center; }
   .grid-table input[type=radio] { cursor: pointer; transform: scale(1.2); }
@@ -44,11 +54,23 @@
 </head>
 <body>
 
-<div class="header">
-  <h1>📋 BÁO CÁO CHECKSTORE - RURAL MIỀN BẮC</h1>
-  <p>QLKV cập nhật vấn đề khi đi cửa hàng</p>
+<!-- Auth Overlay -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <h2>🔐 Xác thực tài khoản</h2>
+    <p>Nhập Gmail được cấp quyền để tiếp tục</p>
+    <input type="email" id="auth-email" placeholder="yourname@gmail.com" onkeydown="if(event.key==='Enter')doAuth()">
+    <button class="auth-btn" onclick="doAuth()">Xác nhận</button>
+    <div class="auth-err" id="auth-err">❌ Gmail chưa được cấp quyền!</div>
+  </div>
 </div>
 
+<div class="header">
+  <h1>📋 BÁO CÁO CHECKSTORE - RURAL MIỀN BẮC</h1>
+  <p id="header-user"></p>
+</div>
+
+<div id="form-wrap">
 <div class="container">
 
   <!-- Thông tin cơ bản -->
@@ -183,11 +205,16 @@
 
   <button class="submit-btn" id="btn_submit" onclick="submitForm()">✅ Gửi báo cáo kiểm tra</button>
 </div>
+</div> <!-- end form-wrap -->
 <div id="toast"></div>
 
 <script>
 // ── CẤU HÌNH — chỉ cần sửa dòng này sau khi deploy Apps Script ──
-const API_URL = 'https://script.google.com/macros/s/AKfycbzSA0HUnl_tbkkIKG12qOGr5Ie_323uk_nRVCqAi4u3d4Nqjumd5u_-SevNzcdS4TMF9g/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyPCSopX_e88YudSze_j897iKeU4PB0xNGJ9uTsjA7ty4znX2VhVXPjZZXTjjTA0FEGLQ/exec';
+
+// ── State ─────────────────────────────────────────────────────
+let APP_CONFIG    = {};   // { "Bắt định vị 100m": true, "Xác thực Gmail": true }
+let CURRENT_USER  = '';   // Gmail đăng nhập
 
 // ── Data ─────────────────────────────────────────────────────
 const BASIC_ITEMS = [
@@ -270,6 +297,17 @@ function onQLKVChange() {
     }).catch(() => { chSel.innerHTML = '<option value="">Lỗi tải dữ liệu</option>'; });
 }
 
+// ── Geofencing ────────────────────────────────────────────────
+function _haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // meters
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLng = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)*Math.sin(dLat/2)
+    + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)
+    * Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 // ── Submit ────────────────────────────────────────────────────
 function getRadio(name) {
   const el = document.querySelector(`input[name="${name}"]:checked`);
@@ -279,8 +317,58 @@ function getRadio(name) {
 function submitForm() {
   const chVal = document.getElementById('sel_ch').value;
   const ch    = chVal ? JSON.parse(chVal) : {};
+
+  // Validate required
+  if (!ch.ma || !document.getElementById('sel_gdv').value || !document.getElementById('sel_qlkv').value) {
+    showToast('⚠️ Vui lòng điền đầy đủ: GĐV, QLKV, Cửa hàng!', true); return;
+  }
+  if (!document.getElementById('ngay_check').value || !document.getElementById('gio_vao').value) {
+    showToast('⚠️ Vui lòng điền Ngày kiểm tra và Giờ vào!', true); return;
+  }
+  const dg = ['bs_dienGiai','kho_dienGiai','date_dienGiai','bt_dienGiai'];
+  for (const id of dg) {
+    if (!document.getElementById(id).value.trim()) {
+      showToast('⚠️ Vui lòng điền đầy đủ tất cả ô Diễn giải vấn đề!', true); return;
+    }
+  }
+
+  // Geofencing check (chỉ khi config bật)
+  if (!APP_CONFIG['Bắt định vị 100m'] || !ch.lat || !ch.lng || isNaN(parseFloat(ch.lat))) {
+    _doSubmit(ch, null);
+    return;
+  }
+
+  const btn = document.getElementById('btn_submit');
+  btn.disabled = true;
+  btn.textContent = '📍 Đang kiểm tra vị trí...';
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const dist = _haversine(pos.coords.latitude, pos.coords.longitude,
+                               parseFloat(ch.lat), parseFloat(ch.lng));
+      if (dist > 100) {
+        btn.disabled = false;
+        btn.textContent = '✅ Gửi báo cáo kiểm tra';
+        showToast(`❌ Vị trí lệch ${Math.round(dist)}m (tối đa 100m). Vui lòng kiểm tra tại cửa hàng!`, true);
+        return;
+      }
+      _doSubmit(ch, pos.coords);
+    },
+    err => {
+      btn.disabled = false;
+      btn.textContent = '✅ Gửi báo cáo kiểm tra';
+      showToast('❌ Không lấy được vị trí GPS. Vui lòng bật định vị!', true);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function _doSubmit(ch, coords) {
   const payload = {
     action: 'submit',
+    submitted_by: CURRENT_USER,
+    submit_lat: coords ? coords.latitude  : '',
+    submit_lng: coords ? coords.longitude : '',
     gdv:    document.getElementById('sel_gdv').value,
     qlkv:   document.getElementById('sel_qlkv').value,
     ma_ch:  ch.ma||'', ten_ch: ch.ten||'',
@@ -301,13 +389,6 @@ function submitForm() {
     bt_huyDong:  getRadio('bt_huyDong'), bt_dongMo:getRadio('bt_dongMo'),
     bt_tichDiem: getRadio('bt_tichDiem'), bt_dienGiai:document.getElementById('bt_dienGiai').value,
   };
-
-  if (!payload.gdv||!payload.qlkv||!payload.ma_ch||!payload.ngay_check||!payload.gio_vao) {
-    showToast('⚠️ Vui lòng điền đầy đủ: GĐV, QLKV, Cửa hàng, Ngày và Giờ vào!', true); return;
-  }
-  if (!payload.bs_dienGiai||!payload.kho_dienGiai||!payload.date_dienGiai||!payload.bt_dienGiai) {
-    showToast('⚠️ Vui lòng điền đầy đủ tất cả ô Diễn giải vấn đề!', true); return;
-  }
 
   const btn = document.getElementById('btn_submit');
   btn.disabled = true; btn.textContent = '⏳ Đang gửi...';
@@ -340,13 +421,31 @@ function showToast(msg, isError) {
 }
 
 // ── Init ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  buildTable('tbody_basic', BASIC_ITEMS);
-  buildTable('tbody_kho',   KHO_ITEMS);
-  buildTable('tbody_date',  DATE_ITEMS);
-  buildTable('tbody_bt',    BT_ITEMS);
-  document.getElementById('ngay_check').valueAsDate = new Date();
+// ── Auth ──────────────────────────────────────────────────────
+function doAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const errEl = document.getElementById('auth-err');
+  errEl.style.display = 'none';
+  if (!email) return;
 
+  fetch(`${API_URL}?action=checkAuth&email=${encodeURIComponent(email)}`)
+    .then(r => r.json())
+    .then(res => {
+      if (res.allowed) {
+        CURRENT_USER = email;
+        document.getElementById('auth-overlay').classList.remove('show');
+        document.getElementById('form-wrap').style.display = 'block';
+        document.getElementById('header-user').textContent =
+          `${res.name || email} · QLKV cập nhật vấn đề khi đi cửa hàng`;
+        _loadGDV();
+      } else {
+        errEl.style.display = 'block';
+      }
+    })
+    .catch(() => { errEl.textContent = '❌ Lỗi kết nối, thử lại!'; errEl.style.display='block'; });
+}
+
+function _loadGDV() {
   fetch(`${API_URL}?action=getGDV`)
     .then(r => r.json())
     .then(list => {
@@ -355,6 +454,34 @@ document.addEventListener('DOMContentLoaded', () => {
       list.forEach(v => { const o=document.createElement('option'); o.value=o.textContent=v; sel.appendChild(o); });
     }).catch(() => {
       document.getElementById('sel_gdv').innerHTML = '<option value="">Lỗi tải GĐV</option>';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildTable('tbody_basic', BASIC_ITEMS);
+  buildTable('tbody_kho',   KHO_ITEMS);
+  buildTable('tbody_date',  DATE_ITEMS);
+  buildTable('tbody_bt',    BT_ITEMS);
+  document.getElementById('ngay_check').valueAsDate = new Date();
+
+  // Load config trước
+  fetch(`${API_URL}?action=getConfig`)
+    .then(r => r.json())
+    .then(cfg => {
+      APP_CONFIG = cfg;
+      if (cfg['Xác thực Gmail']) {
+        document.getElementById('auth-overlay').classList.add('show');
+      } else {
+        document.getElementById('form-wrap').style.display = 'block';
+        document.getElementById('header-user').textContent = 'QLKV cập nhật vấn đề khi đi cửa hàng';
+        _loadGDV();
+      }
+    })
+    .catch(() => {
+      // Fallback: hiện form luôn nếu không load được config
+      document.getElementById('form-wrap').style.display = 'block';
+      document.getElementById('header-user').textContent = 'QLKV cập nhật vấn đề khi đi cửa hàng';
+      _loadGDV();
     });
 });
 </script>
