@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Báo cáo CheckStore - Rural Miền Bắc</title>
+<title>CheckStore - Rural Miền Bắc</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #2d3748; font-size: 14px; }
   .header { background: linear-gradient(135deg, #1a3c6e, #2d6abf); color: white; padding: 18px 20px; text-align: center; }
-  .header h1 { font-size: 18px; font-weight: 700; }
+  .header h1 { font-size: 17px; font-weight: 700; }
   .header p  { font-size: 12px; opacity: 0.85; margin-top: 4px; }
   .container { max-width: 720px; margin: 0 auto; padding: 16px; }
   .card { background: white; border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
@@ -20,24 +20,15 @@
   .form-group select, .form-group input[type=date], .form-group input[type=time], .form-group textarea {
     width: 100%; padding: 8px 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 13px; background: #f7fafc;
   }
-  .form-group select:focus, .form-group input:focus, .form-group textarea:focus {
-    outline: none; border-color: #2d6abf; background: white;
-  }
+  .form-group select:focus, .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #2d6abf; background: white; }
   .form-group textarea { resize: vertical; min-height: 64px; }
+  select:disabled { background: #edf2f7; color: #a0aec0; }
+
+  /* Grid table */
   .grid-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .grid-table th { background: #ebf0fa; color: #1a3c6e; padding: 7px 5px; text-align: center; font-size: 11px; border: 1px solid #e2e8f0; }
   .grid-table td { padding: 7px 5px; border: 1px solid #e2e8f0; vertical-align: middle; }
   .grid-table tr:nth-child(even) td { background: #f7fafc; }
-  /* Auth overlay */
-  #auth-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; align-items:center; justify-content:center; }
-  #auth-overlay.show { display:flex; }
-  .auth-box { background:white; border-radius:14px; padding:28px 24px; width:320px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,.2); }
-  .auth-box h2 { font-size:16px; color:#1a3c6e; margin-bottom:6px; }
-  .auth-box p  { font-size:12px; color:#718096; margin-bottom:16px; }
-  .auth-box input { width:100%; padding:10px 12px; border:1px solid #cbd5e0; border-radius:8px; font-size:14px; margin-bottom:12px; }
-  .auth-btn { width:100%; padding:11px; background:linear-gradient(135deg,#1a3c6e,#2d6abf); color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; }
-  .auth-err { color:#e53e3e; font-size:12px; margin-top:8px; display:none; }
-  #form-wrap { display:none; }
   .grid-table td:first-child { font-weight: 500; padding-left: 8px; }
   .grid-table td:not(:first-child) { text-align: center; }
   .grid-table input[type=radio] { cursor: pointer; transform: scale(1.2); }
@@ -45,178 +36,207 @@
   .legend-item { font-size: 10px; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
   .l1{background:#c6f6d5;color:#276749} .l2{background:#bee3f8;color:#2b6cb0}
   .l3{background:#fefcbf;color:#744210} .l4{background:#fed7d7;color:#9b2c2c} .l5{background:#e2e8f0;color:#4a5568}
-  .submit-btn { width:100%; padding:14px; background:linear-gradient(135deg,#1a3c6e,#2d6abf); color:white; border:none; border-radius:8px; font-size:15px; font-weight:700; cursor:pointer; margin-top:4px; }
-  .submit-btn:disabled { opacity:.5; cursor:not-allowed; }
-  #toast { display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#2f855a; color:white; padding:12px 24px; border-radius:8px; font-size:14px; font-weight:600; z-index:999; box-shadow:0 4px 12px rgba(0,0,0,.2); }
+
+  /* Upload ảnh */
+  .upload-area { border: 2px dashed #cbd5e0; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all .2s; background: #f7fafc; }
+  .upload-area:hover { border-color: #2d6abf; background: #ebf4ff; }
+  .upload-area input { display: none; }
+  .upload-area p { color: #718096; font-size: 13px; margin-top: 6px; }
+  .preview-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .preview-item { position: relative; }
+  .preview-item img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; }
+  .preview-item .del { position: absolute; top: -6px; right: -6px; background: #e53e3e; color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; cursor: pointer; line-height: 18px; text-align: center; }
+  .file-info { font-size: 11px; color: #718096; margin-top: 4px; }
+
+  /* Buttons */
+  .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #1a3c6e, #2d6abf); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Step screen */
+  #step-select { display: block; }
+  #step-form   { display: none; }
+
+  /* Toast */
+  #toast { display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#2f855a; color:white; padding:12px 24px; border-radius:8px; font-size:14px; font-weight:600; z-index:999; box-shadow:0 4px 12px rgba(0,0,0,.2); text-align:center; max-width:90vw; }
   #toast.error { background:#c53030; }
-  select:disabled { background: #edf2f7; color: #a0aec0; }
 </style>
 </head>
 <body>
 
-<!-- Auth Overlay -->
-<div id="auth-overlay">
-  <div class="auth-box">
-    <h2>🔐 Xác thực tài khoản</h2>
-    <p>Nhập Gmail được cấp quyền để tiếp tục</p>
-    <input type="email" id="auth-email" placeholder="yourname@gmail.com" onkeydown="if(event.key==='Enter')doAuth()">
-    <button class="auth-btn" onclick="doAuth()">Xác nhận</button>
-    <div class="auth-err" id="auth-err">❌ Gmail chưa được cấp quyền!</div>
-  </div>
-</div>
-
+<!-- HEADER -->
 <div class="header">
   <h1>📋 BÁO CÁO CHECKSTORE - RURAL MIỀN BẮC</h1>
-  <p id="header-user"></p>
+  <p id="header-sub">Chọn GĐV và QLKV để bắt đầu</p>
 </div>
 
-<div id="form-wrap">
-<div class="container">
-
-  <!-- Thông tin cơ bản -->
-  <div class="card">
-    <div class="card-title">📍 Thông tin cơ bản</div>
-    <div class="form-row">
-      <div class="form-group">
+<!-- BƯỚC 1: Chọn GĐV - QLKV -->
+<div id="step-select">
+  <div class="container">
+    <div class="card">
+      <div class="card-title">👤 Chọn GĐV & QLKV</div>
+      <div class="form-group" style="margin-bottom:12px">
         <label>GĐV <span class="req">*</span></label>
         <select id="sel_gdv" onchange="onGDVChange()">
           <option value="">-- Đang tải... --</option>
         </select>
       </div>
-      <div class="form-group">
+      <div class="form-group" style="margin-bottom:16px">
         <label>QLKV <span class="req">*</span></label>
-        <select id="sel_qlkv" onchange="onQLKVChange()" disabled>
+        <select id="sel_qlkv" disabled>
           <option value="">-- Chọn GĐV trước --</option>
         </select>
       </div>
+      <button class="btn-primary" onclick="goToForm()">Tiếp tục →</button>
     </div>
-    <div class="form-row">
-      <div class="form-group" style="flex:2">
+  </div>
+</div>
+
+<!-- BƯỚC 2: Form chính -->
+<div id="step-form">
+  <div class="container">
+
+    <!-- Thông tin cơ bản -->
+    <div class="card">
+      <div class="card-title">📍 Thông tin kiểm tra</div>
+      <div class="form-group" style="margin-bottom:10px">
         <label>Cửa hàng <span class="req">*</span></label>
-        <select id="sel_ch" disabled>
-          <option value="">-- Chọn QLKV trước --</option>
+        <select id="sel_ch">
+          <option value="">-- Đang tải... --</option>
         </select>
       </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Ngày kiểm tra <span class="req">*</span></label>
-        <input type="date" id="ngay_check">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ngày kiểm tra <span class="req">*</span></label>
+          <input type="date" id="ngay_check">
+        </div>
+        <div class="form-group">
+          <label>Giờ vào <span class="req">*</span></label>
+          <input type="time" id="gio_vao">
+        </div>
+        <div class="form-group">
+          <label>Giờ ra</label>
+          <input type="time" id="gio_ra">
+        </div>
       </div>
-      <div class="form-group">
-        <label>Giờ vào <span class="req">*</span></label>
-        <input type="time" id="gio_vao">
+    </div>
+
+    <!-- Basic Store -->
+    <div class="card">
+      <div class="card-title">🏪 Vấn đề Basic Store</div>
+      <div class="legend">
+        <span class="legend-item l1">1 - Vượt yêu cầu</span>
+        <span class="legend-item l2">2 - Đạt yêu cầu</span>
+        <span class="legend-item l3">3 - Có nhưng không đạt</span>
+        <span class="legend-item l4">4 - Không tuân thủ</span>
+        <span class="legend-item l5">5 - Chưa kiểm tra</span>
       </div>
-      <div class="form-group">
-        <label>Giờ ra</label>
-        <input type="time" id="gio_ra">
+      <table class="grid-table">
+        <thead><tr>
+          <th style="width:38%;text-align:left;padding-left:8px">Tiêu chí</th>
+          <th>Vượt<br>yêu cầu</th><th>Đạt<br>yêu cầu</th>
+          <th>Có nhưng<br>không đạt</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
+        </tr></thead>
+        <tbody id="tbody_basic"></tbody>
+      </table>
+      <div class="form-group" style="margin-top:10px">
+        <label>Diễn giải vấn đề Basic Store <span class="req">*</span></label>
+        <textarea id="bs_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
       </div>
     </div>
-  </div>
 
-  <!-- Basic Store -->
-  <div class="card">
-    <div class="card-title">🏪 Vấn đề Basic Store</div>
-    <div class="legend">
-      <span class="legend-item l1">1 - Vượt yêu cầu</span>
-      <span class="legend-item l2">2 - Đạt yêu cầu</span>
-      <span class="legend-item l3">3 - Có nhưng không đạt</span>
-      <span class="legend-item l4">4 - Không tuân thủ</span>
-      <span class="legend-item l5">5 - Chưa kiểm tra</span>
+    <!-- Kho & Tồn -->
+    <div class="card">
+      <div class="card-title">📦 Kho bãi & Tồn bất thường</div>
+      <div class="legend">
+        <span class="legend-item l1">1 - Vượt yêu cầu</span><span class="legend-item l2">2 - Đạt yêu cầu</span>
+        <span class="legend-item l3">3 - Có nhưng không đạt</span><span class="legend-item l4">4 - Không tuân thủ</span>
+        <span class="legend-item l5">5 - Chưa kiểm tra</span>
+      </div>
+      <table class="grid-table">
+        <thead><tr>
+          <th style="width:38%;text-align:left;padding-left:8px">Tiêu chí</th>
+          <th>Vượt<br>yêu cầu</th><th>Đạt<br>yêu cầu</th>
+          <th>Có nhưng<br>không đạt</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
+        </tr></thead>
+        <tbody id="tbody_kho"></tbody>
+      </table>
+      <div class="form-group" style="margin-top:10px">
+        <label>Diễn giải vấn đề tồn kho <span class="req">*</span></label>
+        <textarea id="kho_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
+      </div>
     </div>
-    <table class="grid-table">
-      <thead><tr>
-        <th style="width:38%;text-align:left;padding-left:8px">Tiêu chí</th>
-        <th>Vượt<br>yêu cầu</th><th>Đạt<br>yêu cầu</th>
-        <th>Có nhưng<br>không đạt</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
-      </tr></thead>
-      <tbody id="tbody_basic"></tbody>
-    </table>
-    <div class="form-group" style="margin-top:10px">
-      <label>Diễn giải vấn đề Basic Store <span class="req">*</span></label>
-      <textarea id="bs_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
-    </div>
-  </div>
 
-  <!-- Kho & Tồn -->
-  <div class="card">
-    <div class="card-title">📦 Kho bãi & Tồn bất thường</div>
-    <div class="legend">
-      <span class="legend-item l1">1 - Vượt yêu cầu</span><span class="legend-item l2">2 - Đạt yêu cầu</span>
-      <span class="legend-item l3">3 - Có nhưng không đạt</span><span class="legend-item l4">4 - Không tuân thủ</span>
-      <span class="legend-item l5">5 - Chưa kiểm tra</span>
+    <!-- Số date -->
+    <div class="card">
+      <div class="card-title">📅 Kiểm tra số date</div>
+      <div class="legend">
+        <span class="legend-item l1">1 - Vượt yêu cầu</span><span class="legend-item l2">2 - Đạt yêu cầu</span>
+        <span class="legend-item l3">3 - Có nhưng không đạt</span><span class="legend-item l4">4 - Không tuân thủ</span>
+        <span class="legend-item l5">5 - Chưa kiểm tra</span>
+      </div>
+      <table class="grid-table">
+        <thead><tr>
+          <th style="width:38%;text-align:left;padding-left:8px">Quầy</th>
+          <th>Vượt<br>yêu cầu</th><th>Đạt<br>yêu cầu</th>
+          <th>Có nhưng<br>không đạt</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
+        </tr></thead>
+        <tbody id="tbody_date"></tbody>
+      </table>
+      <div class="form-group" style="margin-top:10px">
+        <label>Diễn giải vấn đề Số date <span class="req">*</span></label>
+        <textarea id="date_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
+      </div>
     </div>
-    <table class="grid-table">
-      <thead><tr>
-        <th style="width:38%;text-align:left;padding-left:8px">Tiêu chí</th>
-        <th>Vượt<br>yêu cầu</th><th>Đạt<br>yêu cầu</th>
-        <th>Có nhưng<br>không đạt</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
-      </tr></thead>
-      <tbody id="tbody_kho"></tbody>
-    </table>
-    <div class="form-group" style="margin-top:10px">
-      <label>Diễn giải vấn đề tồn kho <span class="req">*</span></label>
-      <textarea id="kho_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
-    </div>
-  </div>
 
-  <!-- Số date -->
-  <div class="card">
-    <div class="card-title">📅 Kiểm tra số date</div>
-    <div class="legend">
-      <span class="legend-item l1">1 - Vượt yêu cầu</span><span class="legend-item l2">2 - Đạt yêu cầu</span>
-      <span class="legend-item l3">3 - Có nhưng không đạt</span><span class="legend-item l4">4 - Không tuân thủ</span>
-      <span class="legend-item l5">5 - Chưa kiểm tra</span>
+    <!-- Bất thường -->
+    <div class="card">
+      <div class="card-title">⚠️ Vấn đề bất thường khác</div>
+      <div class="legend">
+        <span class="legend-item l1">Không vấn đề</span><span class="legend-item l4">Cần xử lý gấp</span>
+        <span class="legend-item l3">Ít nghiêm trọng</span><span class="legend-item l5">Chưa kiểm tra</span>
+      </div>
+      <table class="grid-table">
+        <thead><tr>
+          <th style="width:38%;text-align:left;padding-left:8px">Tiêu chí</th>
+          <th>Không<br>vấn đề</th><th>Cần xử lý<br>gấp</th>
+          <th>Ít nghiêm<br>trọng</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
+        </tr></thead>
+        <tbody id="tbody_bt"></tbody>
+      </table>
+      <div class="form-group" style="margin-top:10px">
+        <label>Diễn giải vấn đề bất thường <span class="req">*</span></label>
+        <textarea id="bt_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
+      </div>
     </div>
-    <table class="grid-table">
-      <thead><tr>
-        <th style="width:38%;text-align:left;padding-left:8px">Quầy</th>
-        <th>Vượt<br>yêu cầu</th><th>Đạt<br>yêu cầu</th>
-        <th>Có nhưng<br>không đạt</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
-      </tr></thead>
-      <tbody id="tbody_date"></tbody>
-    </table>
-    <div class="form-group" style="margin-top:10px">
-      <label>Diễn giải vấn đề Số date <span class="req">*</span></label>
-      <textarea id="date_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
-    </div>
-  </div>
 
-  <!-- Bất thường -->
-  <div class="card">
-    <div class="card-title">⚠️ Vấn đề bất thường khác</div>
-    <div class="legend">
-      <span class="legend-item l1">Không vấn đề</span><span class="legend-item l4">Cần xử lý gấp</span>
-      <span class="legend-item l3">Ít nghiêm trọng</span><span class="legend-item l5">Chưa kiểm tra</span>
+    <!-- Upload ảnh -->
+    <div class="card">
+      <div class="card-title">📷 Upload ảnh Biên bản Checkstore</div>
+      <div class="upload-area" onclick="document.getElementById('photo-input').click()">
+        <input type="file" id="photo-input" accept="image/*" multiple onchange="onPhotosSelected(event)">
+        <div style="font-size:32px">📸</div>
+        <p>Bấm để chọn ảnh (tối đa 5 ảnh)<br><small>Tự động nén về &lt;400KB</small></p>
+      </div>
+      <div class="preview-wrap" id="preview-wrap"></div>
+      <div class="file-info" id="file-info"></div>
     </div>
-    <table class="grid-table">
-      <thead><tr>
-        <th style="width:38%;text-align:left;padding-left:8px">Tiêu chí</th>
-        <th>Không<br>vấn đề</th><th>Cần xử lý<br>gấp</th>
-        <th>Ít nghiêm<br>trọng</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
-      </tr></thead>
-      <tbody id="tbody_bt"></tbody>
-    </table>
-    <div class="form-group" style="margin-top:10px">
-      <label>Diễn giải vấn đề bất thường <span class="req">*</span></label>
-      <textarea id="bt_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
-    </div>
-  </div>
 
-  <button class="submit-btn" id="btn_submit" onclick="submitForm()">✅ Gửi báo cáo kiểm tra</button>
+    <button class="btn-primary" id="btn_submit" onclick="submitForm()">✅ Gửi báo cáo kiểm tra</button>
+    <div style="height:20px"></div>
+  </div>
 </div>
-</div> <!-- end form-wrap -->
+
 <div id="toast"></div>
 
 <script>
-// ── CẤU HÌNH — chỉ cần sửa dòng này sau khi deploy Apps Script ──
-const API_URL = 'https://script.google.com/macros/s/AKfycbyPCSopX_e88YudSze_j897iKeU4PB0xNGJ9uTsjA7ty4znX2VhVXPjZZXTjjTA0FEGLQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzPvCqADhbhSC1UE3ASmUOnK2MKUNnGH0_l4sCv5rnEnCcSOyMoOJjWnNosjuZ0IBej0A/exec';
 
 // ── State ─────────────────────────────────────────────────────
-let APP_CONFIG    = {};   // { "Bắt định vị 100m": true, "Xác thực Gmail": true }
-let CURRENT_USER  = '';   // Gmail đăng nhập
+let SELECTED_GDV  = '';
+let SELECTED_QLKV = '';
+let PHOTOS = []; // { base64, name }
 
-// ── Data ─────────────────────────────────────────────────────
+// ── Table data ────────────────────────────────────────────────
 const BASIC_ITEMS = [
   {id:'bs_tacphong', label:'Tác phong, diện mạo CBNV'},
   {id:'bs_tuvan',    label:'Tư vấn bán hàng'},
@@ -258,15 +278,12 @@ function buildTable(tbodyId, items) {
   });
 }
 
-// ── Dropdowns (gọi API) ──────────────────────────────────────
+// ── Step 1: GĐV / QLKV ───────────────────────────────────────
 function onGDVChange() {
   const gdv = document.getElementById('sel_gdv').value;
   const qlkvSel = document.getElementById('sel_qlkv');
-  const chSel   = document.getElementById('sel_ch');
   qlkvSel.innerHTML = '<option value="">Đang tải...</option>';
   qlkvSel.disabled = true;
-  chSel.innerHTML = '<option value="">-- Chọn QLKV trước --</option>';
-  chSel.disabled = true;
   if (!gdv) return;
   fetch(`${API_URL}?action=getQLKV&gdv=${encodeURIComponent(gdv)}`)
     .then(r => r.json())
@@ -274,37 +291,107 @@ function onGDVChange() {
       qlkvSel.innerHTML = '<option value="">-- Chọn QLKV --</option>';
       list.forEach(v => { const o=document.createElement('option'); o.value=o.textContent=v; qlkvSel.appendChild(o); });
       qlkvSel.disabled = false;
-    }).catch(() => { qlkvSel.innerHTML = '<option value="">Lỗi tải dữ liệu</option>'; });
+    }).catch(() => { qlkvSel.innerHTML = '<option value="">Lỗi tải QLKV</option>'; });
 }
 
-function onQLKVChange() {
-  const qlkv  = document.getElementById('sel_qlkv').value;
+function goToForm() {
+  SELECTED_GDV  = document.getElementById('sel_gdv').value;
+  SELECTED_QLKV = document.getElementById('sel_qlkv').value;
+  if (!SELECTED_GDV || !SELECTED_QLKV) {
+    showToast('⚠️ Vui lòng chọn GĐV và QLKV!', true); return;
+  }
+  // Cập nhật header
+  document.getElementById('header-sub').textContent = `${SELECTED_QLKV}  ·  GĐV: ${SELECTED_GDV}`;
+
+  // Load stores
   const chSel = document.getElementById('sel_ch');
   chSel.innerHTML = '<option value="">Đang tải...</option>';
-  chSel.disabled = true;
-  if (!qlkv) return;
-  fetch(`${API_URL}?action=getStores&qlkv=${encodeURIComponent(qlkv)}`)
+  fetch(`${API_URL}?action=getStores&qlkv=${encodeURIComponent(SELECTED_QLKV)}`)
     .then(r => r.json())
     .then(stores => {
       chSel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>';
       stores.forEach(s => {
         const o = document.createElement('option');
-        o.value = JSON.stringify({ma:s.ma, ten:s.ten});
+        o.value = JSON.stringify({ma:s.ma, ten:s.ten, lat:s.lat, lng:s.lng});
         o.textContent = s.label;
         chSel.appendChild(o);
       });
-      chSel.disabled = false;
-    }).catch(() => { chSel.innerHTML = '<option value="">Lỗi tải dữ liệu</option>'; });
+    }).catch(() => { chSel.innerHTML = '<option value="">Lỗi tải cửa hàng</option>'; });
+
+  document.getElementById('step-select').style.display = 'none';
+  document.getElementById('step-form').style.display   = 'block';
+  window.scrollTo(0,0);
+}
+
+// ── Ảnh: resize < 400KB ──────────────────────────────────────
+function onPhotosSelected(e) {
+  const files = Array.from(e.target.files);
+  if (PHOTOS.length + files.length > 5) {
+    showToast('⚠️ Tối đa 5 ảnh!', true); return;
+  }
+  files.forEach(file => {
+    resizeImage(file, 400 * 1024, (base64, finalSize) => {
+      PHOTOS.push({ base64, name: file.name, size: finalSize });
+      renderPreviews();
+    });
+  });
+  e.target.value = '';
+}
+
+function resizeImage(file, maxBytes, callback) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      let quality = 0.85;
+      let w = img.width, h = img.height;
+      const MAX_DIM = 1600;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        const ratio = Math.min(MAX_DIM/w, MAX_DIM/h);
+        w = Math.round(w*ratio); h = Math.round(h*ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+      function tryCompress(q) {
+        const b64 = canvas.toDataURL('image/jpeg', q);
+        const bytes = Math.round((b64.length - 22) * 3/4);
+        if (bytes <= maxBytes || q <= 0.2) { callback(b64, bytes); }
+        else { tryCompress(q - 0.1); }
+      }
+      tryCompress(quality);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderPreviews() {
+  const wrap = document.getElementById('preview-wrap');
+  const info = document.getElementById('file-info');
+  wrap.innerHTML = '';
+  PHOTOS.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'preview-item';
+    div.innerHTML = `<img src="${p.base64}"><button class="del" onclick="removePhoto(${i})">×</button>`;
+    wrap.appendChild(div);
+  });
+  const total = PHOTOS.reduce((s,p) => s + p.size, 0);
+  info.textContent = PHOTOS.length ? `${PHOTOS.length} ảnh · ~${Math.round(total/1024)}KB` : '';
+}
+
+function removePhoto(i) {
+  PHOTOS.splice(i, 1);
+  renderPreviews();
 }
 
 // ── Geofencing ────────────────────────────────────────────────
 function _haversine(lat1, lng1, lat2, lng2) {
-  const R = 6371000; // meters
+  const R = 6371000;
   const dLat = (lat2-lat1)*Math.PI/180;
   const dLng = (lng2-lng1)*Math.PI/180;
-  const a = Math.sin(dLat/2)*Math.sin(dLat/2)
-    + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)
-    * Math.sin(dLng/2)*Math.sin(dLng/2);
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
@@ -316,65 +403,52 @@ function getRadio(name) {
 
 function submitForm() {
   const chVal = document.getElementById('sel_ch').value;
-  const ch    = chVal ? JSON.parse(chVal) : {};
+  const ch = chVal ? JSON.parse(chVal) : {};
 
-  // Validate required
-  if (!ch.ma || !document.getElementById('sel_gdv').value || !document.getElementById('sel_qlkv').value) {
-    showToast('⚠️ Vui lòng điền đầy đủ: GĐV, QLKV, Cửa hàng!', true); return;
-  }
+  if (!ch.ma) { showToast('⚠️ Vui lòng chọn cửa hàng!', true); return; }
   if (!document.getElementById('ngay_check').value || !document.getElementById('gio_vao').value) {
-    showToast('⚠️ Vui lòng điền Ngày kiểm tra và Giờ vào!', true); return;
+    showToast('⚠️ Vui lòng điền Ngày và Giờ vào!', true); return;
   }
-  const dg = ['bs_dienGiai','kho_dienGiai','date_dienGiai','bt_dienGiai'];
-  for (const id of dg) {
+  for (const id of ['bs_dienGiai','kho_dienGiai','date_dienGiai','bt_dienGiai']) {
     if (!document.getElementById(id).value.trim()) {
-      showToast('⚠️ Vui lòng điền đầy đủ tất cả ô Diễn giải vấn đề!', true); return;
+      showToast('⚠️ Vui lòng điền đầy đủ tất cả ô Diễn giải!', true); return;
     }
   }
 
-  // Geofencing check (chỉ khi config bật)
-  if (!APP_CONFIG['Bắt định vị 100m'] || !ch.lat || !ch.lng || isNaN(parseFloat(ch.lat))) {
+  // Check geofencing nếu có tọa độ
+  if (ch.lat && ch.lng && !isNaN(parseFloat(ch.lat))) {
+    const btn = document.getElementById('btn_submit');
+    btn.disabled = true; btn.textContent = '📍 Kiểm tra vị trí...';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const dist = _haversine(pos.coords.latitude, pos.coords.longitude, parseFloat(ch.lat), parseFloat(ch.lng));
+        if (dist > 100) {
+          btn.disabled = false; btn.textContent = '✅ Gửi báo cáo kiểm tra';
+          showToast(`❌ Vị trí lệch ${Math.round(dist)}m (tối đa 100m)!`, true); return;
+        }
+        _doSubmit(ch, pos.coords);
+      },
+      () => { btn.disabled=false; btn.textContent='✅ Gửi báo cáo kiểm tra'; showToast('❌ Không lấy được GPS. Bật định vị!', true); },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  } else {
     _doSubmit(ch, null);
-    return;
   }
-
-  const btn = document.getElementById('btn_submit');
-  btn.disabled = true;
-  btn.textContent = '📍 Đang kiểm tra vị trí...';
-
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      const dist = _haversine(pos.coords.latitude, pos.coords.longitude,
-                               parseFloat(ch.lat), parseFloat(ch.lng));
-      if (dist > 100) {
-        btn.disabled = false;
-        btn.textContent = '✅ Gửi báo cáo kiểm tra';
-        showToast(`❌ Vị trí lệch ${Math.round(dist)}m (tối đa 100m). Vui lòng kiểm tra tại cửa hàng!`, true);
-        return;
-      }
-      _doSubmit(ch, pos.coords);
-    },
-    err => {
-      btn.disabled = false;
-      btn.textContent = '✅ Gửi báo cáo kiểm tra';
-      showToast('❌ Không lấy được vị trí GPS. Vui lòng bật định vị!', true);
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
 }
 
 function _doSubmit(ch, coords) {
+  const btn = document.getElementById('btn_submit');
+  btn.disabled = true; btn.textContent = '⏳ Đang gửi...';
+
   const payload = {
     action: 'submit',
-    submitted_by: CURRENT_USER,
+    gdv: SELECTED_GDV, qlkv: SELECTED_QLKV,
+    ma_ch: ch.ma, ten_ch: ch.ten,
+    ngay_check: document.getElementById('ngay_check').value,
+    gio_vao: document.getElementById('gio_vao').value,
+    gio_ra:  document.getElementById('gio_ra').value,
     submit_lat: coords ? coords.latitude  : '',
     submit_lng: coords ? coords.longitude : '',
-    gdv:    document.getElementById('sel_gdv').value,
-    qlkv:   document.getElementById('sel_qlkv').value,
-    ma_ch:  ch.ma||'', ten_ch: ch.ten||'',
-    ngay_check: document.getElementById('ngay_check').value,
-    gio_vao:    document.getElementById('gio_vao').value,
-    gio_ra:     document.getElementById('gio_ra').value,
     bs_tacphong:getRadio('bs_tacphong'), bs_tuvan:getRadio('bs_tuvan'),
     bs_taggia:  getRadio('bs_taggia'),   bs_bienbang:getRadio('bs_bienbang'),
     bs_hero:    getRadio('bs_hero'),     bs_tu:getRadio('bs_tu'),
@@ -388,75 +462,27 @@ function _doSubmit(ch, coords) {
     date_dienGiai: document.getElementById('date_dienGiai').value,
     bt_huyDong:  getRadio('bt_huyDong'), bt_dongMo:getRadio('bt_dongMo'),
     bt_tichDiem: getRadio('bt_tichDiem'), bt_dienGiai:document.getElementById('bt_dienGiai').value,
+    photos: PHOTOS.map(p => ({ base64: p.base64, name: p.name })),
   };
 
-  const btn = document.getElementById('btn_submit');
-  btn.disabled = true; btn.textContent = '⏳ Đang gửi...';
-
-  fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-  .then(r => r.json())
-  .then(res => {
-    btn.disabled = false; btn.textContent = '✅ Gửi báo cáo kiểm tra';
-    if (res.success) {
-      showToast('✅ Đã gửi báo cáo thành công!');
-      setTimeout(() => location.reload(), 2000);
-    } else {
-      showToast('❌ Lỗi: ' + res.error, true);
-    }
-  })
-  .catch(e => {
-    btn.disabled = false; btn.textContent = '✅ Gửi báo cáo kiểm tra';
-    showToast('❌ Lỗi kết nối!', true);
-  });
+  fetch(API_URL, { method:'POST', body: JSON.stringify(payload) })
+    .then(r => r.json())
+    .then(res => {
+      btn.disabled = false; btn.textContent = '✅ Gửi báo cáo kiểm tra';
+      if (res.success) { showToast('✅ Gửi báo cáo thành công!'); setTimeout(()=>location.reload(), 2500); }
+      else showToast('❌ Lỗi: ' + res.error, true);
+    })
+    .catch(() => { btn.disabled=false; btn.textContent='✅ Gửi báo cáo kiểm tra'; showToast('❌ Lỗi kết nối!', true); });
 }
 
 function showToast(msg, isError) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.className = isError?'error':'';
+  t.textContent = msg; t.className = isError ? 'error' : '';
   t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 3500);
+  setTimeout(() => t.style.display='none', 3500);
 }
 
 // ── Init ──────────────────────────────────────────────────────
-// ── Auth ──────────────────────────────────────────────────────
-function doAuth() {
-  const email = document.getElementById('auth-email').value.trim();
-  const errEl = document.getElementById('auth-err');
-  errEl.style.display = 'none';
-  if (!email) return;
-
-  fetch(`${API_URL}?action=checkAuth&email=${encodeURIComponent(email)}`)
-    .then(r => r.json())
-    .then(res => {
-      if (res.allowed) {
-        CURRENT_USER = email;
-        document.getElementById('auth-overlay').classList.remove('show');
-        document.getElementById('form-wrap').style.display = 'block';
-        document.getElementById('header-user').textContent =
-          `${res.name || email} · QLKV cập nhật vấn đề khi đi cửa hàng`;
-        _loadGDV();
-      } else {
-        errEl.style.display = 'block';
-      }
-    })
-    .catch(() => { errEl.textContent = '❌ Lỗi kết nối, thử lại!'; errEl.style.display='block'; });
-}
-
-function _loadGDV() {
-  fetch(`${API_URL}?action=getGDV`)
-    .then(r => r.json())
-    .then(list => {
-      const sel = document.getElementById('sel_gdv');
-      sel.innerHTML = '<option value="">-- Chọn GĐV --</option>';
-      list.forEach(v => { const o=document.createElement('option'); o.value=o.textContent=v; sel.appendChild(o); });
-    }).catch(() => {
-      document.getElementById('sel_gdv').innerHTML = '<option value="">Lỗi tải GĐV</option>';
-    });
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   buildTable('tbody_basic', BASIC_ITEMS);
   buildTable('tbody_kho',   KHO_ITEMS);
@@ -464,25 +490,13 @@ document.addEventListener('DOMContentLoaded', () => {
   buildTable('tbody_bt',    BT_ITEMS);
   document.getElementById('ngay_check').valueAsDate = new Date();
 
-  // Load config trước
-  fetch(`${API_URL}?action=getConfig`)
+  fetch(`${API_URL}?action=getGDV`)
     .then(r => r.json())
-    .then(cfg => {
-      APP_CONFIG = cfg;
-      if (cfg['Xác thực Gmail']) {
-        document.getElementById('auth-overlay').classList.add('show');
-      } else {
-        document.getElementById('form-wrap').style.display = 'block';
-        document.getElementById('header-user').textContent = 'QLKV cập nhật vấn đề khi đi cửa hàng';
-        _loadGDV();
-      }
-    })
-    .catch(() => {
-      // Fallback: hiện form luôn nếu không load được config
-      document.getElementById('form-wrap').style.display = 'block';
-      document.getElementById('header-user').textContent = 'QLKV cập nhật vấn đề khi đi cửa hàng';
-      _loadGDV();
-    });
+    .then(list => {
+      const sel = document.getElementById('sel_gdv');
+      sel.innerHTML = '<option value="">-- Chọn GĐV --</option>';
+      list.forEach(v => { const o=document.createElement('option'); o.value=o.textContent=v; sel.appendChild(o); });
+    }).catch(() => { document.getElementById('sel_gdv').innerHTML = '<option value="">Lỗi tải GĐV</option>'; });
 });
 </script>
 </body>
