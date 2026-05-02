@@ -454,8 +454,8 @@ function submitForm() {
     }
   }
 
-  // Check geofencing nếu có tọa độ
-  if (ch.lat && ch.lng && !isNaN(parseFloat(ch.lat))) {
+  // Check geofencing — chỉ khi config bật VÀ CH có tọa độ
+  if (APP_CONFIG['Bắt định vị 100m'] && ch.lat && ch.lng && !isNaN(parseFloat(ch.lat))) {
     const btn = document.getElementById('btn_submit');
     btn.disabled = true; btn.textContent = '📍 Kiểm tra vị trí...';
     navigator.geolocation.getCurrentPosition(
@@ -528,6 +528,13 @@ document.addEventListener('DOMContentLoaded', () => {
   buildTable('tbody_bt',    BT_ITEMS);
   document.getElementById('ngay_check').valueAsDate = new Date();
 
+  // Load config
+  fetch(`${API_URL}?action=getConfig`)
+    .then(r => r.json())
+    .then(cfg => { APP_CONFIG = cfg; })
+    .catch(() => {});
+
+  // Load GDV
   fetch(`${API_URL}?action=getGDV`)
     .then(r => r.json())
     .then(list => {
