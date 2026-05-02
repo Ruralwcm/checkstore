@@ -276,7 +276,7 @@ function buildTable(tbodyId, items) {
   items.forEach(item => {
     const tr = document.createElement('tr');
     let cells = `<td>${item.label}</td>`;
-    ['5','4','3','2','1'].forEach(s => { cells += `<td><input type="radio" name="${item.id}" value="${s}"></td>`; });
+    ['1','2','3','4','5'].forEach(s => { cells += `<td><input type="radio" name="${item.id}" value="${s}"></td>`; });
     tr.innerHTML = cells;
     tbody.appendChild(tr);
   });
