@@ -192,14 +192,17 @@
     <div class="card">
       <div class="card-title">⚠️ Vấn đề bất thường khác</div>
       <div class="legend">
-        <span class="legend-item l1">Không vấn đề</span><span class="legend-item l4">Cần xử lý gấp</span>
-        <span class="legend-item l3">Ít nghiêm trọng</span><span class="legend-item l5">Chưa kiểm tra</span>
+        <span class="legend-item l1">1 - Chưa kiểm tra</span>
+        <span class="legend-item l4">2 - Nghiêm trọng</span>
+        <span class="legend-item l3">3 - Ít nghiêm trọng</span>
+        <span class="legend-item l2">4 - Không tuân thủ</span>
+        <span class="legend-item l5">5 - Không vấn đề</span>
       </div>
       <table class="grid-table">
         <thead><tr>
           <th style="width:38%;text-align:left;padding-left:8px">Tiêu chí</th>
-          <th>Không<br>vấn đề</th><th>Cần xử lý<br>gấp</th>
-          <th>Ít nghiêm<br>trọng</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
+          <th>Chưa<br>kiểm tra</th><th>Nghiêm<br>trọng</th>
+          <th>Ít nghiêm<br>trọng</th><th>Không<br>tuân thủ</th><th>Không<br>vấn đề</th>
         </tr></thead>
         <tbody id="tbody_bt"></tbody>
       </table>
@@ -336,11 +339,14 @@ function onPhotosSelected(e) {
       detectRedSeal(base64, (valid, info) => {
         if (!valid) {
           let reason = '';
-          if (info.white < 0.40) reason = 'ảnh không phải tờ giấy';
-          else if (info.black < 0.01) reason = 'không có nội dung văn bản';
-          else if (info.red < 0.0002) reason = 'không phát hiện dấu đỏ';
-          else reason = 'tỷ lệ đỏ quá cao (không phải dấu đỏ)';
-          showToast('❌ ' + file.name + ': ' + reason + '. Vui lòng chụp lại biên bản có đóng dấu đỏ!', true);
+          if (info.white < 0.40) {
+            reason = 'Lỗi. Phải chụp ảnh biên bản có dấu đỏ. Lưu ý căn đúng khung giấy A4';
+          } else if (info.red > 0.02) {
+            reason = 'Lỗi. Ảnh có nhiều chi tiết thừa, phải căn chụp phần Biên bản A4';
+          } else {
+            reason = 'Lỗi. Phải chụp biên bản A4 có dấu đỏ';
+          }
+          showToast('❌ ' + reason, true);
           renderPreviews();
           return;
         }
