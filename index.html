@@ -124,17 +124,17 @@
     <div class="card">
       <div class="card-title">🏪 Vấn đề Basic Store</div>
       <div class="legend">
-        <span class="legend-item l1">1 - Vượt yêu cầu</span>
-        <span class="legend-item l2">2 - Đạt yêu cầu</span>
+        <span class="legend-item l5">5 - Vượt yêu cầu</span>
+        <span class="legend-item l4">4 - Đạt yêu cầu</span>
         <span class="legend-item l3">3 - Có nhưng không đạt</span>
-        <span class="legend-item l4">4 - Không tuân thủ</span>
-        <span class="legend-item l5">5 - Chưa kiểm tra</span>
+        <span class="legend-item l2">2 - Không thực hiện</span>
+        <span class="legend-item l1">1 - Chưa kiểm tra</span>
       </div>
       <table class="grid-table">
         <thead><tr>
           <th style="width:38%;text-align:left;padding-left:8px">Tiêu chí</th>
-          <th>Vượt<br>yêu cầu</th><th>Đạt<br>yêu cầu</th>
-          <th>Có nhưng<br>không đạt</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
+          <th>Chưa<br>kiểm tra</th><th>Không<br>thực hiện</th>
+          <th>Có nhưng<br>không đạt</th><th>Đạt<br>yêu cầu</th><th>Vượt<br>yêu cầu</th>
         </tr></thead>
         <tbody id="tbody_basic"></tbody>
       </table>
@@ -148,15 +148,15 @@
     <div class="card">
       <div class="card-title">📦 Kho bãi & Tồn bất thường</div>
       <div class="legend">
-        <span class="legend-item l1">1 - Vượt yêu cầu</span><span class="legend-item l2">2 - Đạt yêu cầu</span>
-        <span class="legend-item l3">3 - Có nhưng không đạt</span><span class="legend-item l4">4 - Không tuân thủ</span>
-        <span class="legend-item l5">5 - Chưa kiểm tra</span>
+        <span class="legend-item l5">5 - Vượt yêu cầu</span><span class="legend-item l4">4 - Đạt yêu cầu</span>
+        <span class="legend-item l3">3 - Có nhưng không đạt</span><span class="legend-item l2">2 - Không thực hiện</span>
+        <span class="legend-item l1">1 - Chưa kiểm tra</span>
       </div>
       <table class="grid-table">
         <thead><tr>
           <th style="width:38%;text-align:left;padding-left:8px">Tiêu chí</th>
-          <th>Vượt<br>yêu cầu</th><th>Đạt<br>yêu cầu</th>
-          <th>Có nhưng<br>không đạt</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
+          <th>Chưa<br>kiểm tra</th><th>Không<br>thực hiện</th>
+          <th>Có nhưng<br>không đạt</th><th>Đạt<br>yêu cầu</th><th>Vượt<br>yêu cầu</th>
         </tr></thead>
         <tbody id="tbody_kho"></tbody>
       </table>
@@ -170,15 +170,15 @@
     <div class="card">
       <div class="card-title">📅 Kiểm tra số date</div>
       <div class="legend">
-        <span class="legend-item l1">1 - Vượt yêu cầu</span><span class="legend-item l2">2 - Đạt yêu cầu</span>
-        <span class="legend-item l3">3 - Có nhưng không đạt</span><span class="legend-item l4">4 - Không tuân thủ</span>
-        <span class="legend-item l5">5 - Chưa kiểm tra</span>
+        <span class="legend-item l5">5 - Vượt yêu cầu</span><span class="legend-item l4">4 - Đạt yêu cầu</span>
+        <span class="legend-item l3">3 - Có nhưng không đạt</span><span class="legend-item l2">2 - Không thực hiện</span>
+        <span class="legend-item l1">1 - Chưa kiểm tra</span>
       </div>
       <table class="grid-table">
         <thead><tr>
           <th style="width:38%;text-align:left;padding-left:8px">Quầy</th>
-          <th>Vượt<br>yêu cầu</th><th>Đạt<br>yêu cầu</th>
-          <th>Có nhưng<br>không đạt</th><th>Không<br>tuân thủ</th><th>Chưa<br>kiểm tra</th>
+          <th>Chưa<br>kiểm tra</th><th>Không<br>thực hiện</th>
+          <th>Có nhưng<br>không đạt</th><th>Đạt<br>yêu cầu</th><th>Vượt<br>yêu cầu</th>
         </tr></thead>
         <tbody id="tbody_date"></tbody>
       </table>
@@ -273,7 +273,7 @@ function buildTable(tbodyId, items) {
   items.forEach(item => {
     const tr = document.createElement('tr');
     let cells = `<td>${item.label}</td>`;
-    ['1','2','3','4','5'].forEach(s => { cells += `<td><input type="radio" name="${item.id}" value="${s}"></td>`; });
+    ['5','4','3','2','1'].forEach(s => { cells += `<td><input type="radio" name="${item.id}" value="${s}"></td>`; });
     tr.innerHTML = cells;
     tbody.appendChild(tr);
   });
