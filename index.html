@@ -114,7 +114,7 @@
           <input type="time" id="gio_vao">
         </div>
         <div class="form-group">
-          <label>Giờ ra</label>
+          <label>Giờ ra <span class="req">*</span></label>
           <input type="time" id="gio_ra">
         </div>
       </div>
@@ -477,6 +477,23 @@ function submitForm() {
   if (!ch.ma) { showToast('⚠️ Vui lòng chọn cửa hàng!', true); return; }
   if (!document.getElementById('ngay_check').value || !document.getElementById('gio_vao').value) {
     showToast('⚠️ Vui lòng điền Ngày và Giờ vào!', true); return;
+  }
+  // Validate giờ ra bắt buộc + logic > giờ vào và <= 8 tiếng
+  const gioVao = document.getElementById('gio_vao').value;
+  const gioRa  = document.getElementById('gio_ra').value;
+  if (!gioRa) {
+    showToast('⚠️ Vui lòng điền Giờ ra!', true); return;
+  }
+  const [hV, mV] = gioVao.split(':').map(Number);
+  const [hR, mR] = gioRa.split(':').map(Number);
+  const minVao = hV * 60 + mV;
+  const minRa  = hR * 60 + mR;
+  const diff   = minRa - minVao;
+  if (diff <= 0) {
+    showToast('⚠️ Giờ ra phải lớn hơn Giờ vào!', true); return;
+  }
+  if (diff > 8 * 60) {
+    showToast('⚠️ Thời gian kiểm tra không quá 8 tiếng (Giờ vào: ' + gioVao + ', Giờ ra: ' + gioRa + ')!', true); return;
   }
   // Validate backdate
   const backdateHours = typeof APP_CONFIG['Cập nhật backdate'] === 'number' ? APP_CONFIG['Cập nhật backdate'] : null;
