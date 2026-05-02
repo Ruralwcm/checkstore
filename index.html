@@ -229,7 +229,7 @@
 <div id="toast"></div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbxdzopwUqw1RTQF2-If_FR7sUFTGfCn177TmdbNfLm-ejne6A2nE_j7ElyxAEGp51CdbQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwTqTsPkOMm9Uv8O4d9zMf6rkuEjrlxLDWH4TetDa4nJEnq3WSoMKqkMWK4jUxI9OtESg/exec';
 
 // ── State ─────────────────────────────────────────────────────
 let SELECTED_GDV  = '';
@@ -409,6 +409,26 @@ function submitForm() {
   if (!document.getElementById('ngay_check').value || !document.getElementById('gio_vao').value) {
     showToast('⚠️ Vui lòng điền Ngày và Giờ vào!', true); return;
   }
+  // Validate backdate
+  const backdateHours = typeof APP_CONFIG['Cập nhật backdate'] === 'number' ? APP_CONFIG['Cập nhật backdate'] : null;
+  if (backdateHours !== null) {
+    const ngay = document.getElementById('ngay_check').value;
+    const gio  = document.getElementById('gio_vao').value;
+    if (ngay && gio) {
+      const submitTime = new Date(`${ngay}T${gio}:00+07:00`);
+      const now = new Date();
+      const diffHours = (now - submitTime) / 3600000;
+      if (diffHours > backdateHours) {
+        showToast(`⚠️ Chỉ được cập nhật lùi tối đa ${backdateHours}h (hiện tại lệch ${Math.round(diffHours)}h)`, true);
+        return;
+      }
+      if (submitTime > now) {
+        showToast('⚠️ Ngày/giờ kiểm tra không được lớn hơn thời điểm hiện tại!', true);
+        return;
+      }
+    }
+  }
+
   // Validate tất cả radio phải được chọn
   const allRadioGroups = [
     ...BASIC_ITEMS.map(i=>i.id),
