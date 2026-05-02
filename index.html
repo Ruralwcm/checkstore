@@ -350,29 +350,34 @@ function onPhotosSelected(e) {
 
 
 // ── Detect dấu đỏ ────────────────────────────────────────────
+// Quét TOÀN ẢNH — R>130, G<110, B<110, diff>50 → >= 0.02% pixel = có dấu
+// (Ảnh mẫu thực tế: 0.082% → ngưỡng 0.02% cho dư địa 4x)
 function detectRedSeal(base64, callback) {
   const img = new Image();
   img.onload = function() {
     const canvas = document.createElement('canvas');
-    const MAX = 400;
+    const MAX = 800;
     const scale = Math.min(1, MAX / Math.max(img.width, img.height));
     canvas.width  = Math.round(img.width  * scale);
     canvas.height = Math.round(img.height * scale);
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     let redCount = 0;
     const total = canvas.width * canvas.height;
+
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i], g = data[i+1], b = data[i+2];
-      // Điều kiện pixel đỏ đậm: R cao, G+B thấp, chênh lệch rõ
-      if (r > 150 && g < 80 && b < 80 && (r - g) > 80 && (r - b) > 80) {
+      // Pixel đỏ đậm: R>130, G<110, B<110, chênh lệch R-G và R-B > 50
+      if (r > 130 && g < 110 && b < 110 && (r - g) > 50 && (r - b) > 50) {
         redCount++;
       }
     }
+
     const ratio = redCount / total;
-    // Ngưỡng: >0.3% pixel đỏ → có dấu
-    callback(ratio >= 0.003, ratio);
+    // Ngưỡng: >= 0.02% toàn ảnh → có dấu đỏ
+    callback(ratio >= 0.0002, ratio);
   };
   img.src = base64;
 }
