@@ -470,6 +470,56 @@ function getRadio(name) {
   return el ? el.value : '';
 }
 
+
+// ── Hash ảnh (fingerprint từ sample pixels) ─────────────────
+function hashImage(base64, callback) {
+  const img = new Image();
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    // Resize nhỏ để lấy fingerprint nhanh
+    canvas.width = 16; canvas.height = 16;
+    canvas.getContext('2d').drawImage(img, 0, 0, 16, 16);
+    const data = canvas.getContext('2d').getImageData(0, 0, 16, 16).data;
+    // Tạo hash string từ sample pixels (mỗi 4 pixel lấy 1 giá trị R)
+    let hash = '';
+    for (let i = 0; i < data.length; i += 16) {
+      hash += Math.floor(data[i] / 32).toString(16); // quantize để chịu nén nhẹ
+    }
+    callback(hash);
+  };
+  img.src = base64;
+}
+
+function hasDuplicatePhotos(photos, callback) {
+  if(photos.length < 2) { callback(false, null); return; }
+  const hashes = [];
+  let done = 0;
+  photos.forEach((p, i) => {
+    hashImage(p.base64, (h) => {
+      hashes[i] = h;
+      done++;
+      if(done === photos.length) {
+        // Kiểm tra có hash nào trùng không
+        for(let a = 0; a < hashes.length; a++) {
+          for(let b = a+1; b < hashes.length; b++) {
+            // So sánh similarity (cho phép sai lệch nhỏ do nén)
+            let diff = 0;
+            for(let k = 0; k < hashes[a].length; k++) {
+              if(hashes[a][k] !== hashes[b][k]) diff++;
+            }
+            const similarity = 1 - diff/hashes[a].length;
+            if(similarity > 0.92) { // >92% giống nhau = trùng
+              callback(true, a+1, b+1);
+              return;
+            }
+          }
+        }
+        callback(false, null);
+      }
+    });
+  });
+}
+
 function submitForm() {
   const chVal = document.getElementById('sel_ch').value;
   const ch = chVal ? JSON.parse(chVal) : {};
@@ -545,6 +595,24 @@ function submitForm() {
     return;
   }
 
+  // Detect ảnh trùng lặp
+  const btn0 = document.getElementById('btn_submit');
+  btn0.disabled = true; btn0.textContent = '🔍 Kiểm tra ảnh...';
+  hasDuplicatePhotos(PHOTOS, (isDup, idx1, idx2) => {
+    if(isDup) {
+      btn0.disabled = false; btn0.textContent = '✅ Gửi báo cáo kiểm tra';
+      showToast('❌ Ảnh ' + idx1 + ' và ảnh ' + idx2 + ' bị trùng nhau! Vui lòng chụp 3 ảnh khác nhau.', true);
+      return;
+    }
+    btn0.disabled = false; btn0.textContent = '✅ Gửi báo cáo kiểm tra';
+    _continueSubmit();
+  });
+  return; // chờ async
+}
+
+function _continueSubmit() {
+  const chVal = document.getElementById('sel_ch').value;
+  const ch = chVal ? JSON.parse(chVal) : {};
   // Check geofencing — chỉ khi config bật VÀ CH có tọa độ
   if (APP_CONFIG['Bắt định vị 100m'] && ch.lat && ch.lng && !isNaN(parseFloat(ch.lat))) {
     const btn = document.getElementById('btn_submit');
