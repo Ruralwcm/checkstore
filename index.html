@@ -350,9 +350,34 @@ function onPhotosSelected(e) {
           renderPreviews();
           return;
         }
-        PHOTOS.push({ base64, name: file.name, size: finalSize });
-        renderPreviews();
-        showToast('✅ Ảnh hợp lệ — phát hiện dấu đỏ xác nhận!');
+        // Detect trùng ngay khi chọn ảnh 2-3
+        const newPhoto = { base64, name: file.name, size: finalSize };
+        if(PHOTOS.length > 0) {
+          let dupIdx = -1, checked = 0;
+          PHOTOS.forEach((existing, ei) => {
+            hashImage(existing.base64, (h1) => {
+              hashImage(base64, (h2) => {
+                let diff = 0;
+                for(let k=0;k<h1.length;k++) if(h1[k]!==h2[k]) diff++;
+                if((1 - diff/h1.length) > 0.92 && dupIdx === -1) dupIdx = ei+1;
+                checked++;
+                if(checked === PHOTOS.length) {
+                  if(dupIdx >= 0) {
+                    showToast('❌ Ảnh mới trùng với ảnh ' + dupIdx + '! Vui lòng chụp ảnh khác.', true);
+                  } else {
+                    PHOTOS.push(newPhoto);
+                    renderPreviews();
+                    showToast('✅ Ảnh ' + PHOTOS.length + '/3 hợp lệ — có dấu đỏ!');
+                  }
+                }
+              });
+            });
+          });
+        } else {
+          PHOTOS.push(newPhoto);
+          renderPreviews();
+          showToast('✅ Ảnh 1/3 hợp lệ — có dấu đỏ!');
+        }
       });
     });
   });
