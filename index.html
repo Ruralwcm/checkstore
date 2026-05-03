@@ -218,7 +218,7 @@
       <div class="upload-area" onclick="document.getElementById('photo-input').click()">
         <input type="file" id="photo-input" accept="image/*" multiple onchange="onPhotosSelected(event)">
         <div style="font-size:32px">📸</div>
-        <p>Bấm để chọn ảnh (tối đa 3 ảnh)<br><small>Tự động nén về &lt;300KB</small></p>
+        <p>Bấm để chọn ảnh (bắt buộc đủ 3 ảnh)<br><small>Tự động nén về &lt;300KB</small></p>
       </div>
       <div class="preview-wrap" id="preview-wrap"></div>
       <div class="file-info" id="file-info"></div>
@@ -331,7 +331,7 @@ function goToForm() {
 function onPhotosSelected(e) {
   const files = Array.from(e.target.files);
   if (PHOTOS.length + files.length > 3) {
-    showToast('⚠️ Tối đa 3 ảnh!', true); return;
+    showToast('⚠️ Chỉ được chọn đúng 3 ảnh!', true); return;
   }
   files.forEach(file => {
     resizeImage(file, 300 * 1024, (base64, finalSize) => {
@@ -447,7 +447,7 @@ function renderPreviews() {
     wrap.appendChild(div);
   });
   const total = PHOTOS.reduce((s,p) => s + p.size, 0);
-  info.textContent = PHOTOS.length ? `${PHOTOS.length} ảnh · ~${Math.round(total/1024)}KB` : '';
+  info.textContent = PHOTOS.length ? `${PHOTOS.length}/3 ảnh · ~${Math.round(total/1024)}KB${PHOTOS.length<3?' ⚠️ Cần thêm ảnh':''}` : '';
 }
 
 function removePhoto(i) {
@@ -537,6 +537,12 @@ function submitForm() {
     if (!document.getElementById(id).value.trim()) {
       showToast('⚠️ Vui lòng điền đầy đủ tất cả ô Diễn giải!', true); return;
     }
+  }
+
+  // Validate đủ 3 ảnh hợp lệ
+  if (PHOTOS.length < 3) {
+    showToast('❌ Bắt buộc phải upload đủ 3 ảnh biên bản có dấu đỏ! (hiện có ' + PHOTOS.length + '/3)', true);
+    return;
   }
 
   // Check geofencing — chỉ khi config bật VÀ CH có tọa độ
