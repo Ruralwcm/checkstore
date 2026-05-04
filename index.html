@@ -335,102 +335,41 @@ function onPhotosSelected(e) {
   }
   files.forEach(file => {
     resizeImage(file, 200 * 1024, (base64, finalSize) => {
-      // Kiểm tra dấu đỏ trước khi thêm ảnh
-      detectRedSeal(base64, (valid, info) => {
-        if (!valid) {
-          let reason = '';
-          if (info.white < 0.40) {
-            reason = 'Lỗi. Phải chụp ảnh biên bản có dấu đỏ. Lưu ý căn đúng khung giấy A4';
-          } else if (info.red > 0.02) {
-            reason = 'Lỗi. Ảnh có nhiều chi tiết thừa, phải căn chụp phần Biên bản A4';
-          } else {
-            reason = 'Lỗi. Phải chụp biên bản A4 có dấu đỏ';
-          }
-          showToast('❌ ' + reason, true);
-          renderPreviews();
-          return;
-        }
-        // Detect trùng ngay khi chọn ảnh 2-3
-        const newPhoto = { base64, name: file.name, size: finalSize };
-        if(PHOTOS.length > 0) {
-          let dupIdx = -1, checked = 0;
-          PHOTOS.forEach((existing, ei) => {
-            hashImage(existing.base64, (h1) => {
-              hashImage(base64, (h2) => {
-                let diff = 0;
-                for(let k=0;k<h1.length;k++) if(h1[k]!==h2[k]) diff++;
-                if((1 - diff/h1.length) > 0.92 && dupIdx === -1) dupIdx = ei+1;
-                checked++;
-                if(checked === PHOTOS.length) {
-                  if(dupIdx >= 0) {
-                    showToast('❌ Ảnh mới trùng với ảnh ' + dupIdx + '! Vui lòng chụp ảnh khác.', true);
-                  } else {
-                    PHOTOS.push(newPhoto);
-                    renderPreviews();
-                    showToast('✅ Ảnh ' + PHOTOS.length + '/3 hợp lệ — có dấu đỏ!');
-                  }
+      // Detect trùng ngay khi chọn ảnh 2-3
+      const newPhoto = { base64, name: file.name, size: finalSize };
+      if(PHOTOS.length > 0) {
+        let dupIdx = -1, checked = 0;
+        PHOTOS.forEach((existing, ei) => {
+          hashImage(existing.base64, (h1) => {
+            hashImage(base64, (h2) => {
+              let diff = 0;
+              for(let k=0;k<h1.length;k++) if(h1[k]!==h2[k]) diff++;
+              if((1 - diff/h1.length) > 0.92 && dupIdx === -1) dupIdx = ei+1;
+              checked++;
+              if(checked === PHOTOS.length) {
+                if(dupIdx >= 0) {
+                  showToast('❌ Ảnh mới trùng với ảnh ' + dupIdx + '! Vui lòng chụp ảnh khác.', true);
+                } else {
+                  PHOTOS.push(newPhoto);
+                  renderPreviews();
+                  showToast('✅ Ảnh ' + PHOTOS.length + '/3 hợp lệ!');
                 }
-              });
+              }
             });
           });
-        } else {
-          PHOTOS.push(newPhoto);
-          renderPreviews();
-          showToast('✅ Ảnh 1/3 hợp lệ — có dấu đỏ!');
-        }
-      });
+        });
+      } else {
+        PHOTOS.push(newPhoto);
+        renderPreviews();
+        showToast('✅ Ảnh 1/3 hợp lệ!');
+      }
     });
   });
   e.target.value = '';
 }
 
 
-// ── Detect dấu đỏ trên tờ giấy ──────────────────────────────
-// 3 điều kiện PHẢI ĐỦ CẢ 3:
-//   1. Nền trắng (giấy) > 40% → là tờ giấy
-//   2. Chữ đen > 1%           → có nội dung in
-//   3. Đỏ trong khoảng 0.02%-2% → dấu đỏ (không phải cờ/banner đỏ)
-function detectRedSeal(base64, callback) {
-  const img = new Image();
-  img.onload = function() {
-    const canvas = document.createElement('canvas');
-    const MAX = 800;
-    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-    canvas.width  = Math.round(img.width  * scale);
-    canvas.height = Math.round(img.height * scale);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    let redCount = 0, whiteCount = 0, blackCount = 0;
-    const total = canvas.width * canvas.height;
-
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i], g = data[i+1], b = data[i+2];
-      // Đỏ đậm: R>130, G<110, B<110, chênh lệch >50
-      if (r > 130 && g < 110 && b < 110 && (r-g) > 50 && (r-b) > 50) redCount++;
-      // Trắng: tất cả channel > 200
-      if (r > 200 && g > 200 && b > 200) whiteCount++;
-      // Đen: tất cả channel < 80
-      if (r < 80 && g < 80 && b < 80) blackCount++;
-    }
-
-    const redRatio   = redCount   / total;
-    const whiteRatio = whiteCount / total;
-    const blackRatio = blackCount / total;
-
-    // Điều kiện 1: là tờ giấy (trắng > 40%)
-    const isDocument = whiteRatio >= 0.40;
-    // Điều kiện 2: có chữ in (đen > 1%)
-    const hasText    = blackRatio >= 0.01;
-    // Điều kiện 3: có dấu đỏ (0.02% - 2%), không phải ảnh cờ/banner
-    const hasSeal    = redRatio >= 0.0002 && redRatio <= 0.02;
-
-    const valid = isDocument && hasText && hasSeal;
-    callback(valid, { red: redRatio, white: whiteRatio, black: blackRatio });
-  };
-  img.src = base64;
-}
+// detectRedSeal: đã bỏ (không còn yêu cầu detect dấu đỏ)
 
 function resizeImage(file, maxBytes, callback) {
   const reader = new FileReader();
@@ -616,7 +555,7 @@ function submitForm() {
 
   // Validate đủ 3 ảnh hợp lệ
   if (PHOTOS.length < 3) {
-    showToast('❌ Bắt buộc phải upload đủ 3 ảnh biên bản có dấu đỏ! (hiện có ' + PHOTOS.length + '/3)', true);
+    showToast('❌ Bắt buộc phải upload đủ 3 ảnh biên bản! (hiện có ' + PHOTOS.length + '/3)', true);
     return;
   }
 
