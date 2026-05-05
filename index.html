@@ -140,7 +140,7 @@
       </table>
       <div class="form-group" style="margin-top:10px">
         <label>Diễn giải vấn đề Basic Store <span class="req">*</span></label>
-        <textarea id="bs_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
+        <textarea id="bs_dienGiai" placeholder="Bắt buộc nhập diễn giải (tối thiểu 100 ký tự)..."></textarea>
       </div>
     </div>
 
@@ -162,7 +162,7 @@
       </table>
       <div class="form-group" style="margin-top:10px">
         <label>Diễn giải vấn đề tồn kho <span class="req">*</span></label>
-        <textarea id="kho_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
+        <textarea id="kho_dienGiai" placeholder="Bắt buộc nhập diễn giải (tối thiểu 100 ký tự)..."></textarea>
       </div>
     </div>
 
@@ -184,7 +184,7 @@
       </table>
       <div class="form-group" style="margin-top:10px">
         <label>Diễn giải vấn đề Số date <span class="req">*</span></label>
-        <textarea id="date_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
+        <textarea id="date_dienGiai" placeholder="Bắt buộc nhập diễn giải (tối thiểu 100 ký tự)..."></textarea>
       </div>
     </div>
 
@@ -208,7 +208,7 @@
       </table>
       <div class="form-group" style="margin-top:10px">
         <label>Diễn giải vấn đề bất thường <span class="req">*</span></label>
-        <textarea id="bt_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
+        <textarea id="bt_dienGiai" placeholder="Bắt buộc nhập diễn giải (tối thiểu 100 ký tự)..."></textarea>
       </div>
     </div>
 
@@ -546,10 +546,36 @@ function submitForm() {
     }
   }
 
-  // Validate diễn giải bắt buộc
-  for (const id of ['bs_dienGiai','kho_dienGiai','date_dienGiai','bt_dienGiai']) {
-    if (!document.getElementById(id).value.trim()) {
-      showToast('⚠️ Vui lòng điền đầy đủ tất cả ô Diễn giải!', true); return;
+  // Validate: Trong cùng 1 mục, tất cả điểm giống nhau → yêu cầu đánh giá lại
+  const sectionChecks = [
+    { name: 'Vấn đề Basic Store', items: BASIC_ITEMS },
+    { name: 'Kho bãi & tồn bất thường', items: KHO_ITEMS },
+  ];
+  for (const sec of sectionChecks) {
+    const scores = sec.items.map(i => {
+      const el = document.querySelector(`input[name="${i.id}"]:checked`);
+      return el ? el.value : null;
+    });
+    if (scores.every(s => s !== null) && new Set(scores).size === 1) {
+      showToast(`⚠️ Mục "${sec.name}": Bạn phải đánh giá sát thực tế hơn, yêu cầu làm lại!`, true);
+      return;
+    }
+  }
+
+  // Validate diễn giải bắt buộc + tối thiểu 100 ký tự
+  const dienGiaiFields = [
+    { id: 'bs_dienGiai',   label: 'Diễn giải Basic Store' },
+    { id: 'kho_dienGiai',  label: 'Diễn giải tồn kho' },
+    { id: 'date_dienGiai', label: 'Diễn giải Check Date' },
+    { id: 'bt_dienGiai',   label: 'Diễn giải bất thường' },
+  ];
+  for (const f of dienGiaiFields) {
+    const val = document.getElementById(f.id).value.trim();
+    if (!val) {
+      showToast(`⚠️ Vui lòng điền "${f.label}"!`, true); return;
+    }
+    if (val.length < 100) {
+      showToast(`⚠️ "${f.label}" cần tối thiểu 100 ký tự (hiện có ${val.length})!`, true); return;
     }
   }
 
