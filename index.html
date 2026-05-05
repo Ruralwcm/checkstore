@@ -184,7 +184,7 @@
       </table>
       <div class="form-group" style="margin-top:10px">
         <label>Diễn giải vấn đề Số date <span class="req">*</span></label>
-        <textarea id="date_dienGiai" placeholder="Bắt buộc nhập diễn giải (tối thiểu 100 ký tự)..."></textarea>
+        <textarea id="date_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
       </div>
     </div>
 
@@ -208,7 +208,7 @@
       </table>
       <div class="form-group" style="margin-top:10px">
         <label>Diễn giải vấn đề bất thường <span class="req">*</span></label>
-        <textarea id="bt_dienGiai" placeholder="Bắt buộc nhập diễn giải (tối thiểu 100 ký tự)..."></textarea>
+        <textarea id="bt_dienGiai" placeholder="Bắt buộc nhập diễn giải..."></textarea>
       </div>
     </div>
 
@@ -271,15 +271,70 @@ const BT_ITEMS = [
   {id:'bt_tichDiem', label:'Giao dịch tích điểm bất thường'},
 ];
 
+// ── Confirm khi TB mục ≥ 4 ───────────────────────────────────
+// sectionConfirmed: lưu trạng thái đã xác nhận (tránh hỏi nhiều lần)
+const sectionConfirmed = {};
+
+function checkSectionAvg(sectionKey, items, sectionLabel) {
+  // Chỉ check khi tất cả radio trong mục đã được chọn
+  const scores = items.map(i => {
+    const el = document.querySelector(`input[name="${i.id}"]:checked`);
+    return el ? parseInt(el.value) : null;
+  });
+  if (scores.some(s => s === null)) return; // chưa chọn đủ
+
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  if (avg < 4) {
+    // Reset confirmed nếu điểm giảm xuống < 4
+    sectionConfirmed[sectionKey] = false;
+    return;
+  }
+  if (sectionConfirmed[sectionKey]) return; // đã confirm rồi, không hỏi lại
+
+  // TB >= 4: hỏi confirm
+  const confirmed = window.confirm(
+    `📊 "${sectionLabel}"\nĐiểm trung bình: ${avg.toFixed(1)}/5\n\nBạn chắc chắn CH làm rất tốt hạng mục này?`
+  );
+  if (confirmed) {
+    sectionConfirmed[sectionKey] = true;
+  } else {
+    // Người dùng chọn Cancel → reset toàn bộ radio của mục này
+    items.forEach(i => {
+      const checked = document.querySelector(`input[name="${i.id}"]:checked`);
+      if (checked) checked.checked = false;
+    });
+    sectionConfirmed[sectionKey] = false;
+    showToast('🔄 Vui lòng đánh giá lại mục này!', true);
+  }
+}
+
+const SECTION_MAP = [
+  { key: 'basic', items: null, label: 'Vấn đề Basic Store' },
+  { key: 'kho',   items: null, label: 'Kho bãi & tồn bất thường' },
+  { key: 'date',  items: null, label: 'Check Date' },
+  { key: 'bt',    items: null, label: 'Kiểm soát bất thường' },
+];
+// items sẽ được gán sau khi BASIC_ITEMS etc. đã sẵn sàng
+
 function buildTable(tbodyId, items) {
   const tbody = document.getElementById(tbodyId);
+  // Xác định section key từ tbodyId
+  const keyMap = { tbody_basic:'basic', tbody_kho:'kho', tbody_date:'date', tbody_bt:'bt' };
+  const labelMap = { basic:'Vấn đề Basic Store', kho:'Kho bãi & tồn bất thường', date:'Check Date', bt:'Kiểm soát bất thường' };
+  const secKey = keyMap[tbodyId];
+  const secLabel = labelMap[secKey] || tbodyId;
+
   items.forEach(item => {
     const tr = document.createElement('tr');
     let cells = `<td>${item.label}</td>`;
-    ['1','2','3','4','5'].forEach(s => { cells += `<td><input type="radio" name="${item.id}" value="${s}"></td>`; });
+    ['1','2','3','4','5'].forEach(s => {
+      cells += `<td><input type="radio" name="${item.id}" value="${s}" onchange="checkSectionAvg('${secKey}', window['${tbodyId}_ITEMS'], '${secLabel}')"></td>`;
+    });
     tr.innerHTML = cells;
     tbody.appendChild(tr);
   });
+  // Gán items vào window để dùng trong onchange
+  window[`${tbodyId}_ITEMS`] = items;
 }
 
 // ── Step 1: GĐV / QLKV ───────────────────────────────────────
@@ -562,20 +617,27 @@ function submitForm() {
     }
   }
 
-  // Validate diễn giải bắt buộc + tối thiểu 100 ký tự
-  const dienGiaiFields = [
-    { id: 'bs_dienGiai',   label: 'Diễn giải Basic Store' },
-    { id: 'kho_dienGiai',  label: 'Diễn giải tồn kho' },
-    { id: 'date_dienGiai', label: 'Diễn giải Check Date' },
-    { id: 'bt_dienGiai',   label: 'Diễn giải bất thường' },
+  // Validate diễn giải: Basic Store + Kho bãi min 100 ký tự; Date + Bất thường chỉ cần điền
+  const dienGiaiMin100 = [
+    { id: 'bs_dienGiai',  label: 'Diễn giải Basic Store' },
+    { id: 'kho_dienGiai', label: 'Diễn giải tồn kho' },
   ];
-  for (const f of dienGiaiFields) {
+  for (const f of dienGiaiMin100) {
     const val = document.getElementById(f.id).value.trim();
     if (!val) {
       showToast(`⚠️ Vui lòng điền "${f.label}"!`, true); return;
     }
     if (val.length < 100) {
       showToast(`⚠️ "${f.label}" cần tối thiểu 100 ký tự (hiện có ${val.length})!`, true); return;
+    }
+  }
+  const dienGiaiRequired = [
+    { id: 'date_dienGiai', label: 'Diễn giải Check Date' },
+    { id: 'bt_dienGiai',   label: 'Diễn giải bất thường' },
+  ];
+  for (const f of dienGiaiRequired) {
+    if (!document.getElementById(f.id).value.trim()) {
+      showToast(`⚠️ Vui lòng điền "${f.label}"!`, true); return;
     }
   }
 
