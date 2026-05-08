@@ -56,6 +56,29 @@
   #step-select { display: block; }
   #step-form   { display: none; }
 
+  /* Section lock overlay */
+  .section-locked { position: relative; pointer-events: none; opacity: 0.4; }
+  .section-locked::after {
+    content: '🔒 Chọn cửa hàng trước';
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(26,60,110,0.85); color: white;
+    padding: 8px 18px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    white-space: nowrap; pointer-events: none;
+  }
+
+  /* Geo status bar */
+  #geo-status {
+    display: none;
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  #geo-status.checking { background: #ebf4ff; color: #2b6cb0; display: block; }
+  #geo-status.ok       { background: #c6f6d5; color: #276749; display: block; }
+  #geo-status.error    { background: #fed7d7; color: #9b2c2c; display: block; }
+
   /* Toast */
   #toast { display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#2f855a; color:white; padding:12px 24px; border-radius:8px; font-size:14px; font-weight:600; z-index:999; box-shadow:0 4px 12px rgba(0,0,0,.2); text-align:center; max-width:90vw; }
   #toast.error { background:#c53030; }
@@ -63,7 +86,6 @@
 </head>
 <body>
 
-<!-- HEADER -->
 <div class="header">
   <h1>📋 BÁO CÁO CHECKSTORE - RURAL MIỀN BẮC</h1>
   <p id="header-sub">Chọn GĐV và QLKV để bắt đầu</p>
@@ -100,11 +122,13 @@
       <div class="card-title">📍 Thông tin kiểm tra</div>
       <div class="form-group" style="margin-bottom:10px">
         <label>Cửa hàng <span class="req">*</span></label>
-        <select id="sel_ch">
+        <select id="sel_ch" onchange="onStoreChange()">
           <option value="">-- Đang tải... --</option>
         </select>
       </div>
-      <div class="form-row">
+      <!-- Geo status hiển thị ngay dưới dropdown cửa hàng -->
+      <div id="geo-status"></div>
+      <div class="form-row" style="margin-top:10px">
         <div class="form-group">
           <label>Ngày kiểm tra <span class="req">*</span></label>
           <input type="date" id="ngay_check">
@@ -121,7 +145,7 @@
     </div>
 
     <!-- Basic Store -->
-    <div class="card">
+    <div class="card section-locked" id="card_basic">
       <div class="card-title">🏪 Vấn đề Basic Store</div>
       <div class="legend">
         <span class="legend-item l1">1 - Vượt yêu cầu</span>
@@ -145,7 +169,7 @@
     </div>
 
     <!-- Kho & Tồn -->
-    <div class="card">
+    <div class="card section-locked" id="card_kho">
       <div class="card-title">📦 Kho bãi & Tồn bất thường</div>
       <div class="legend">
         <span class="legend-item l1">1 - Vượt yêu cầu</span><span class="legend-item l2">2 - Đạt yêu cầu</span>
@@ -167,7 +191,7 @@
     </div>
 
     <!-- Số date -->
-    <div class="card">
+    <div class="card section-locked" id="card_date">
       <div class="card-title">📅 Kiểm tra số date</div>
       <div class="legend">
         <span class="legend-item l1">1 - Vượt yêu cầu</span><span class="legend-item l2">2 - Đạt yêu cầu</span>
@@ -189,7 +213,7 @@
     </div>
 
     <!-- Bất thường -->
-    <div class="card">
+    <div class="card section-locked" id="card_bt">
       <div class="card-title">⚠️ Vấn đề bất thường khác</div>
       <div class="legend">
         <span class="legend-item l1">Không vấn đề</span><span class="legend-item l4">Cần xử lý gấp</span>
@@ -210,7 +234,7 @@
     </div>
 
     <!-- Upload ảnh -->
-    <div class="card">
+    <div class="card section-locked" id="card_photo">
       <div class="card-title">📷 Upload ảnh Biên bản Checkstore</div>
       <div class="upload-area" onclick="document.getElementById('photo-input').click()">
         <input type="file" id="photo-input" accept="image/*" multiple onchange="onPhotosSelected(event)">
@@ -221,7 +245,7 @@
       <div class="file-info" id="file-info"></div>
     </div>
 
-    <button class="btn-primary" id="btn_submit" onclick="submitForm()">✅ Gửi báo cáo kiểm tra</button>
+    <button class="btn-primary" id="btn_submit" onclick="submitForm()" disabled>✅ Gửi báo cáo kiểm tra</button>
     <div style="height:20px"></div>
   </div>
 </div>
@@ -236,7 +260,9 @@ let APP_CONFIG    = {};
 let CONFIG_LOADED = false;
 let SELECTED_GDV  = '';
 let SELECTED_QLKV = '';
-let PHOTOS = []; // { base64, name }
+let PHOTOS = [];
+let GEO_OK = false;        // true khi đã pass định vị lần 1
+let CURRENT_CH = {};       // store hiện tại đang chọn
 
 // ── Table data ────────────────────────────────────────────────
 const BASIC_ITEMS = [
@@ -280,6 +306,21 @@ function buildTable(tbodyId, items) {
   });
 }
 
+// ── Lock / Unlock sections ────────────────────────────────────
+function lockSections() {
+  ['card_basic','card_kho','card_date','card_bt','card_photo'].forEach(id => {
+    document.getElementById(id).classList.add('section-locked');
+  });
+  document.getElementById('btn_submit').disabled = true;
+}
+
+function unlockSections() {
+  ['card_basic','card_kho','card_date','card_bt','card_photo'].forEach(id => {
+    document.getElementById(id).classList.remove('section-locked');
+  });
+  document.getElementById('btn_submit').disabled = false;
+}
+
 // ── Step 1: GĐV / QLKV ───────────────────────────────────────
 function onGDVChange() {
   const gdv = document.getElementById('sel_gdv').value;
@@ -299,13 +340,9 @@ function onGDVChange() {
 function goToForm() {
   SELECTED_GDV  = document.getElementById('sel_gdv').value;
   SELECTED_QLKV = document.getElementById('sel_qlkv').value;
-  if (!SELECTED_GDV || !SELECTED_QLKV) {
-    showToast('⚠️ Vui lòng chọn GĐV và QLKV!', true); return;
-  }
-  // Cập nhật header
+  if (!SELECTED_GDV || !SELECTED_QLKV) { showToast('⚠️ Vui lòng chọn GĐV và QLKV!', true); return; }
   document.getElementById('header-sub').textContent = `${SELECTED_QLKV}  ·  GĐV: ${SELECTED_GDV}`;
 
-  // Load stores
   const chSel = document.getElementById('sel_ch');
   chSel.innerHTML = '<option value="">Đang tải...</option>';
   fetch(`${API_URL}?action=getStores&qlkv=${encodeURIComponent(SELECTED_QLKV)}`)
@@ -322,17 +359,66 @@ function goToForm() {
 
   document.getElementById('step-select').style.display = 'none';
   document.getElementById('step-form').style.display   = 'block';
+  lockSections();
   window.scrollTo(0,0);
 }
 
-// ── Ảnh: resize < 400KB ──────────────────────────────────────
+// ── Khi chọn cửa hàng → detect GPS ngay ─────────────────────
+function onStoreChange() {
+  const chVal = document.getElementById('sel_ch').value;
+  if (!chVal) { lockSections(); setGeoStatus('', ''); return; }
+
+  CURRENT_CH = JSON.parse(chVal);
+  GEO_OK = false;
+  lockSections();
+
+  // Nếu config chưa load hoặc không bắt định vị → unlock luôn
+  if (!CONFIG_LOADED || !APP_CONFIG['Bắt định vị 100m'] || !CURRENT_CH.lat || !CURRENT_CH.lng || isNaN(parseFloat(CURRENT_CH.lat))) {
+    unlockSections();
+    setGeoStatus('', '');
+    return;
+  }
+
+  // Bắt đầu check GPS
+  setGeoStatus('checking', '📍 Đang kiểm tra vị trí...');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const dist = _haversine(pos.coords.latitude, pos.coords.longitude, parseFloat(CURRENT_CH.lat), parseFloat(CURRENT_CH.lng));
+      if (dist > 100) {
+        setGeoStatus('error', `❌ Vị trí lệch ${Math.round(dist)}m — bạn cần đứng trong vòng 100m của cửa hàng!`);
+        // Vẫn lock, không cho nhập
+      } else {
+        GEO_OK = true;
+        setGeoStatus('ok', `✅ Định vị hợp lệ — cách cửa hàng ${Math.round(dist)}m`);
+        unlockSections();
+      }
+    },
+    err => {
+      setGeoStatus('error', '❌ Không lấy được GPS — vui lòng bật định vị và thử lại!');
+      // Không unlock
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function setGeoStatus(type, msg) {
+  const el = document.getElementById('geo-status');
+  el.className = type ? `geo-status ${type}` : '';
+  el.textContent = msg;
+  if (!type) el.style.display = 'none';
+  else {
+    el.style.display = 'block';
+    el.id = 'geo-status'; // keep id
+    el.setAttribute('class', type); // checking / ok / error
+  }
+}
+
+// ── Ảnh ──────────────────────────────────────────────────────
 function onPhotosSelected(e) {
   const files = Array.from(e.target.files);
-  if (PHOTOS.length + files.length > 5) {
-    showToast('⚠️ Tối đa 5 ảnh!', true); return;
-  }
+  if (PHOTOS.length + files.length > 5) { showToast('⚠️ Tối đa 5 ảnh!', true); return; }
   files.forEach(file => {
-    resizeImage(file, 400 * 1024, (base64, finalSize) => {
+    resizeImage(file, 400*1024, (base64, finalSize) => {
       PHOTOS.push({ base64, name: file.name, size: finalSize });
       renderPreviews();
     });
@@ -345,24 +431,18 @@ function resizeImage(file, maxBytes, callback) {
   reader.onload = ev => {
     const img = new Image();
     img.onload = () => {
-      let quality = 0.85;
       let w = img.width, h = img.height;
       const MAX_DIM = 1600;
-      if (w > MAX_DIM || h > MAX_DIM) {
-        const ratio = Math.min(MAX_DIM/w, MAX_DIM/h);
-        w = Math.round(w*ratio); h = Math.round(h*ratio);
-      }
+      if (w > MAX_DIM || h > MAX_DIM) { const ratio=Math.min(MAX_DIM/w,MAX_DIM/h); w=Math.round(w*ratio); h=Math.round(h*ratio); }
       const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
       function tryCompress(q) {
         const b64 = canvas.toDataURL('image/jpeg', q);
-        const bytes = Math.round((b64.length - 22) * 3/4);
-        if (bytes <= maxBytes || q <= 0.2) { callback(b64, bytes); }
-        else { tryCompress(q - 0.1); }
+        const bytes = Math.round((b64.length-22)*3/4);
+        if (bytes<=maxBytes||q<=0.2) { callback(b64,bytes); } else { tryCompress(q-0.1); }
       }
-      tryCompress(quality);
+      tryCompress(0.85);
     };
     img.src = ev.target.result;
   };
@@ -371,30 +451,24 @@ function resizeImage(file, maxBytes, callback) {
 
 function renderPreviews() {
   const wrap = document.getElementById('preview-wrap');
-  const info = document.getElementById('file-info');
   wrap.innerHTML = '';
-  PHOTOS.forEach((p, i) => {
+  PHOTOS.forEach((p,i) => {
     const div = document.createElement('div');
     div.className = 'preview-item';
     div.innerHTML = `<img src="${p.base64}"><button class="del" onclick="removePhoto(${i})">×</button>`;
     wrap.appendChild(div);
   });
-  const total = PHOTOS.reduce((s,p) => s + p.size, 0);
-  info.textContent = PHOTOS.length ? `${PHOTOS.length} ảnh · ~${Math.round(total/1024)}KB` : '';
+  const total = PHOTOS.reduce((s,p)=>s+p.size,0);
+  document.getElementById('file-info').textContent = PHOTOS.length ? `${PHOTOS.length} ảnh · ~${Math.round(total/1024)}KB` : '';
 }
 
-function removePhoto(i) {
-  PHOTOS.splice(i, 1);
-  renderPreviews();
-}
+function removePhoto(i) { PHOTOS.splice(i,1); renderPreviews(); }
 
-// ── Geofencing ────────────────────────────────────────────────
-function _haversine(lat1, lng1, lat2, lng2) {
-  const R = 6371000;
-  const dLat = (lat2-lat1)*Math.PI/180;
-  const dLng = (lng2-lng1)*Math.PI/180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+// ── Haversine ─────────────────────────────────────────────────
+function _haversine(lat1,lng1,lat2,lng2) {
+  const R=6371000, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
 // ── Submit ────────────────────────────────────────────────────
@@ -404,78 +478,63 @@ function getRadio(name) {
 }
 
 function submitForm() {
-  // Chặn submit nếu config chưa tải xong
-  if (!CONFIG_LOADED) {
-    showToast('⏳ Đang tải cấu hình, vui lòng thử lại sau 2 giây...', true);
-    return;
-  }
+  if (!CONFIG_LOADED) { showToast('⏳ Đang tải cấu hình, thử lại sau 2 giây...', true); return; }
 
-  const chVal = document.getElementById('sel_ch').value;
-  const ch = chVal ? JSON.parse(chVal) : {};
-
+  const ch = CURRENT_CH;
   if (!ch.ma) { showToast('⚠️ Vui lòng chọn cửa hàng!', true); return; }
   if (!document.getElementById('ngay_check').value || !document.getElementById('gio_vao').value) {
     showToast('⚠️ Vui lòng điền Ngày và Giờ vào!', true); return;
   }
+
   // Validate backdate
-  const backdateHours = typeof APP_CONFIG['Cập nhật backdate'] === 'number' ? APP_CONFIG['Cập nhật backdate'] : null;
+  const backdateHours = typeof APP_CONFIG['Cập nhật backdate']==='number' ? APP_CONFIG['Cập nhật backdate'] : null;
   if (backdateHours !== null) {
-    const ngay = document.getElementById('ngay_check').value;
-    const gio  = document.getElementById('gio_vao').value;
+    const ngay=document.getElementById('ngay_check').value, gio=document.getElementById('gio_vao').value;
     if (ngay && gio) {
-      const submitTime = new Date(`${ngay}T${gio}:00+07:00`);
-      const now = new Date();
-      const diffHours = (now - submitTime) / 3600000;
-      if (diffHours > backdateHours) {
-        showToast(`⚠️ Chỉ được cập nhật lùi tối đa ${backdateHours}h (hiện tại lệch ${Math.round(diffHours)}h)`, true);
-        return;
-      }
-      if (submitTime > now) {
-        showToast('⚠️ Ngày/giờ kiểm tra không được lớn hơn thời điểm hiện tại!', true);
-        return;
-      }
+      const submitTime=new Date(`${ngay}T${gio}:00+07:00`), now=new Date();
+      const diffHours=(now-submitTime)/3600000;
+      if (diffHours>backdateHours) { showToast(`⚠️ Chỉ được cập nhật lùi tối đa ${backdateHours}h (lệch ${Math.round(diffHours)}h)`, true); return; }
+      if (submitTime>now) { showToast('⚠️ Ngày/giờ không được lớn hơn hiện tại!', true); return; }
     }
   }
 
-  // Validate tất cả radio phải được chọn
-  const allRadioGroups = [
-    ...BASIC_ITEMS.map(i=>i.id),
-    ...KHO_ITEMS.map(i=>i.id),
-    ...DATE_ITEMS.map(i=>i.id),
-    ...BT_ITEMS.map(i=>i.id),
-  ];
-  for (const name of allRadioGroups) {
-    if (!document.querySelector(`input[name="${name}"]:checked`)) {
-      // Tìm tên tiêu chí để thông báo rõ hơn
-      const allItems = [...BASIC_ITEMS,...KHO_ITEMS,...DATE_ITEMS,...BT_ITEMS];
-      const item = allItems.find(i=>i.id===name);
-      showToast(`⚠️ Vui lòng chọn đánh giá: "${item ? item.label : name}"`, true);
-      return;
+  // Validate radio
+  const allItems=[...BASIC_ITEMS,...KHO_ITEMS,...DATE_ITEMS,...BT_ITEMS];
+  for (const item of allItems) {
+    if (!document.querySelector(`input[name="${item.id}"]:checked`)) {
+      showToast(`⚠️ Chưa chọn đánh giá: "${item.label}"`, true); return;
     }
   }
 
-  // Validate diễn giải bắt buộc
+  // Validate diễn giải
   for (const id of ['bs_dienGiai','kho_dienGiai','date_dienGiai','bt_dienGiai']) {
-    if (!document.getElementById(id).value.trim()) {
-      showToast('⚠️ Vui lòng điền đầy đủ tất cả ô Diễn giải!', true); return;
-    }
+    if (!document.getElementById(id).value.trim()) { showToast('⚠️ Điền đầy đủ tất cả ô Diễn giải!', true); return; }
   }
 
-  // Check geofencing — chỉ khi config bật VÀ CH có tọa độ
-  if (APP_CONFIG['Bắt định vị 100m'] && ch.lat && ch.lng && !isNaN(parseFloat(ch.lat))) {
+  // Check GPS lần 2 khi submit (nếu bắt định vị)
+  const needGeo = APP_CONFIG['Bắt định vị 100m'] && ch.lat && ch.lng && !isNaN(parseFloat(ch.lat));
+  if (needGeo) {
     const btn = document.getElementById('btn_submit');
-    btn.disabled = true; btn.textContent = '📍 Kiểm tra vị trí...';
+    btn.disabled=true; btn.textContent='📍 Xác nhận vị trí...';
+    setGeoStatus('checking', '📍 Đang xác nhận vị trí lần cuối...');
     navigator.geolocation.getCurrentPosition(
       pos => {
-        const dist = _haversine(pos.coords.latitude, pos.coords.longitude, parseFloat(ch.lat), parseFloat(ch.lng));
-        if (dist > 100) {
-          btn.disabled = false; btn.textContent = '✅ Gửi báo cáo kiểm tra';
-          showToast(`❌ Vị trí lệch ${Math.round(dist)}m (tối đa 100m)!`, true); return;
+        const dist=_haversine(pos.coords.latitude,pos.coords.longitude,parseFloat(ch.lat),parseFloat(ch.lng));
+        if (dist>100) {
+          btn.disabled=false; btn.textContent='✅ Gửi báo cáo kiểm tra';
+          setGeoStatus('error', `❌ Vị trí lệch ${Math.round(dist)}m — không thể gửi!`);
+          showToast(`❌ Vị trí lệch ${Math.round(dist)}m (tối đa 100m)!`, true);
+          return;
         }
-        _doSubmit(ch, '✅ Đạt');
+        setGeoStatus('ok', `✅ Xác nhận vị trí OK — cách ${Math.round(dist)}m`);
+        _doSubmit(ch, `✅ Đạt (${Math.round(dist)}m)`);
       },
-      () => { btn.disabled=false; btn.textContent='✅ Gửi báo cáo kiểm tra'; showToast('❌ Không lấy được GPS. Bật định vị!', true); },
-      { enableHighAccuracy: true, timeout: 10000 }
+      () => {
+        btn.disabled=false; btn.textContent='✅ Gửi báo cáo kiểm tra';
+        setGeoStatus('error', '❌ Không lấy được GPS khi gửi!');
+        showToast('❌ Không lấy được GPS. Bật định vị!', true);
+      },
+      { enableHighAccuracy:true, timeout:10000 }
     );
   } else {
     _doSubmit(ch, '⚪ Không kiểm tra');
@@ -484,47 +543,44 @@ function submitForm() {
 
 function _doSubmit(ch, geoStatus) {
   const btn = document.getElementById('btn_submit');
-  btn.disabled = true; btn.textContent = '⏳ Đang gửi...';
-
+  btn.disabled=true; btn.textContent='⏳ Đang gửi...';
   const payload = {
-    action: 'submit',
-    gdv: SELECTED_GDV, qlkv: SELECTED_QLKV,
-    ma_ch: ch.ma, ten_ch: ch.ten,
-    ngay_check: document.getElementById('ngay_check').value,
-    gio_vao: document.getElementById('gio_vao').value,
-    gio_ra:  document.getElementById('gio_ra').value,
-    geo_status: geoStatus,
+    action:'submit', gdv:SELECTED_GDV, qlkv:SELECTED_QLKV,
+    ma_ch:ch.ma, ten_ch:ch.ten,
+    ngay_check:document.getElementById('ngay_check').value,
+    gio_vao:document.getElementById('gio_vao').value,
+    gio_ra:document.getElementById('gio_ra').value,
+    geo_status:geoStatus,
     bs_tacphong:getRadio('bs_tacphong'), bs_tuvan:getRadio('bs_tuvan'),
-    bs_taggia:  getRadio('bs_taggia'),   bs_bienbang:getRadio('bs_bienbang'),
-    bs_hero:    getRadio('bs_hero'),     bs_tu:getRadio('bs_tu'),
+    bs_taggia:getRadio('bs_taggia'), bs_bienbang:getRadio('bs_bienbang'),
+    bs_hero:getRadio('bs_hero'), bs_tu:getRadio('bs_tu'),
     bs_ctkm_thu:getRadio('bs_ctkm_thu'), bs_ctkm_dau:getRadio('bs_ctkm_dau'),
-    bs_vesinh:  getRadio('bs_vesinh'),   bs_dienGiai:document.getElementById('bs_dienGiai').value,
-    kho_kho:    getRadio('kho_kho'),     kho_tonCao:getRadio('kho_tonCao'),
-    kho_nhoLe:  getRadio('kho_nhoLe'),   kho_9003:getRadio('kho_9003'),
-    kho_fresh:  getRadio('kho_fresh'),   kho_dienGiai:document.getElementById('kho_dienGiai').value,
+    bs_vesinh:getRadio('bs_vesinh'), bs_dienGiai:document.getElementById('bs_dienGiai').value,
+    kho_kho:getRadio('kho_kho'), kho_tonCao:getRadio('kho_tonCao'),
+    kho_nhoLe:getRadio('kho_nhoLe'), kho_9003:getRadio('kho_9003'),
+    kho_fresh:getRadio('kho_fresh'), kho_dienGiai:document.getElementById('kho_dienGiai').value,
     date_thitNguoi:getRadio('date_thitNguoi'), date_boSuaTrung:getRadio('date_boSuaTrung'),
-    date_tpKho:    getRadio('date_tpKho'),     date_banhKeo:getRadio('date_banhKeo'),
-    date_dienGiai: document.getElementById('date_dienGiai').value,
-    bt_huyDong:  getRadio('bt_huyDong'), bt_dongMo:getRadio('bt_dongMo'),
-    bt_tichDiem: getRadio('bt_tichDiem'), bt_dienGiai:document.getElementById('bt_dienGiai').value,
-    photos: PHOTOS.map(p => ({ base64: p.base64, name: p.name })),
+    date_tpKho:getRadio('date_tpKho'), date_banhKeo:getRadio('date_banhKeo'),
+    date_dienGiai:document.getElementById('date_dienGiai').value,
+    bt_huyDong:getRadio('bt_huyDong'), bt_dongMo:getRadio('bt_dongMo'),
+    bt_tichDiem:getRadio('bt_tichDiem'), bt_dienGiai:document.getElementById('bt_dienGiai').value,
+    photos: PHOTOS.map(p=>({base64:p.base64, name:p.name})),
   };
-
-  fetch(API_URL, { method:'POST', body: JSON.stringify(payload) })
-    .then(r => r.json())
+  fetch(API_URL, {method:'POST', body:JSON.stringify(payload)})
+    .then(r=>r.json())
     .then(res => {
-      btn.disabled = false; btn.textContent = '✅ Gửi báo cáo kiểm tra';
-      if (res.success) { showToast('✅ Gửi báo cáo thành công!'); setTimeout(()=>location.reload(), 2500); }
-      else showToast('❌ Lỗi: ' + res.error, true);
+      btn.disabled=false; btn.textContent='✅ Gửi báo cáo kiểm tra';
+      if (res.success) { showToast('✅ Gửi báo cáo thành công!'); setTimeout(()=>location.reload(),2500); }
+      else showToast('❌ Lỗi: '+res.error, true);
     })
-    .catch(() => { btn.disabled=false; btn.textContent='✅ Gửi báo cáo kiểm tra'; showToast('❌ Lỗi kết nối!', true); });
+    .catch(()=>{ btn.disabled=false; btn.textContent='✅ Gửi báo cáo kiểm tra'; showToast('❌ Lỗi kết nối!', true); });
 }
 
 function showToast(msg, isError) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = isError ? 'error' : '';
-  t.style.display = 'block';
-  setTimeout(() => t.style.display='none', 3500);
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=isError?'error':'';
+  t.style.display='block';
+  setTimeout(()=>t.style.display='none',3500);
 }
 
 // ── Init ──────────────────────────────────────────────────────
@@ -535,20 +591,18 @@ document.addEventListener('DOMContentLoaded', () => {
   buildTable('tbody_bt',    BT_ITEMS);
   document.getElementById('ngay_check').valueAsDate = new Date();
 
-  // Load config
   fetch(`${API_URL}?action=getConfig`)
-    .then(r => r.json())
-    .then(cfg => { APP_CONFIG = cfg; CONFIG_LOADED = true; })
-    .catch(() => { CONFIG_LOADED = true; }); // lỗi fetch → vẫn cho submit
+    .then(r=>r.json())
+    .then(cfg=>{ APP_CONFIG=cfg; CONFIG_LOADED=true; })
+    .catch(()=>{ CONFIG_LOADED=true; });
 
-  // Load GDV
   fetch(`${API_URL}?action=getGDV`)
-    .then(r => r.json())
-    .then(list => {
-      const sel = document.getElementById('sel_gdv');
-      sel.innerHTML = '<option value="">-- Chọn GĐV --</option>';
-      list.forEach(v => { const o=document.createElement('option'); o.value=o.textContent=v; sel.appendChild(o); });
-    }).catch(() => { document.getElementById('sel_gdv').innerHTML = '<option value="">Lỗi tải GĐV</option>'; });
+    .then(r=>r.json())
+    .then(list=>{
+      const sel=document.getElementById('sel_gdv');
+      sel.innerHTML='<option value="">-- Chọn GĐV --</option>';
+      list.forEach(v=>{ const o=document.createElement('option'); o.value=o.textContent=v; sel.appendChild(o); });
+    }).catch(()=>{ document.getElementById('sel_gdv').innerHTML='<option value="">Lỗi tải GĐV</option>'; });
 });
 </script>
 </body>
