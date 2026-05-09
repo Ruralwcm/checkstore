@@ -377,7 +377,7 @@ function onStoreChange() {
     ? APP_CONFIG['Khoảng cách định vị (m)']
     : (APP_CONFIG['Bắt định vị 100m'] ? 100 : 0); // backward compat
 
-  // Nếu config chưa load hoặc không bắt định vị → unlock luôn
+  // geoDistLimit = 0 → tắt định vị hoàn toàn, unlock luôn
   if (!CONFIG_LOADED || !geoDistLimit || !CURRENT_CH.lat || !CURRENT_CH.lng || isNaN(parseFloat(CURRENT_CH.lat))) {
     unlockSections();
     setGeoStatus('', '');
