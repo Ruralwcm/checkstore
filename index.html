@@ -372,8 +372,13 @@ function onStoreChange() {
   GEO_OK = false;
   lockSections();
 
+  // Lấy khoảng cách cho phép từ config (key mới: "Khoảng cách định vị (m)")
+  const geoDistLimit = typeof APP_CONFIG['Khoảng cách định vị (m)'] === 'number'
+    ? APP_CONFIG['Khoảng cách định vị (m)']
+    : (APP_CONFIG['Bắt định vị 100m'] ? 100 : 0); // backward compat
+
   // Nếu config chưa load hoặc không bắt định vị → unlock luôn
-  if (!CONFIG_LOADED || !APP_CONFIG['Bắt định vị 100m'] || !CURRENT_CH.lat || !CURRENT_CH.lng || isNaN(parseFloat(CURRENT_CH.lat))) {
+  if (!CONFIG_LOADED || !geoDistLimit || !CURRENT_CH.lat || !CURRENT_CH.lng || isNaN(parseFloat(CURRENT_CH.lat))) {
     unlockSections();
     setGeoStatus('', '');
     return;
@@ -384,9 +389,8 @@ function onStoreChange() {
   navigator.geolocation.getCurrentPosition(
     pos => {
       const dist = _haversine(pos.coords.latitude, pos.coords.longitude, parseFloat(CURRENT_CH.lat), parseFloat(CURRENT_CH.lng));
-      if (dist > 100) {
-        setGeoStatus('error', `❌ Vị trí lệch ${Math.round(dist)}m — bạn cần đứng trong vòng 100m của cửa hàng!`);
-        // Vẫn lock, không cho nhập
+      if (dist > geoDistLimit) {
+        setGeoStatus('error', `❌ Vị trí lệch ${Math.round(dist)}m — cần đứng trong vòng ${geoDistLimit}m!`);
       } else {
         GEO_OK = true;
         setGeoStatus('ok', `✅ Định vị hợp lệ — cách cửa hàng ${Math.round(dist)}m`);
@@ -395,7 +399,6 @@ function onStoreChange() {
     },
     err => {
       setGeoStatus('error', '❌ Không lấy được GPS — vui lòng bật định vị và thử lại!');
-      // Không unlock
     },
     { enableHighAccuracy: true, timeout: 10000 }
   );
@@ -482,8 +485,16 @@ function submitForm() {
 
   const ch = CURRENT_CH;
   if (!ch.ma) { showToast('⚠️ Vui lòng chọn cửa hàng!', true); return; }
-  if (!document.getElementById('ngay_check').value || !document.getElementById('gio_vao').value) {
-    showToast('⚠️ Vui lòng điền Ngày và Giờ vào!', true); return;
+
+  // Giờ vào + Giờ ra đều bắt buộc
+  if (!document.getElementById('ngay_check').value) {
+    showToast('⚠️ Vui lòng điền Ngày kiểm tra!', true); return;
+  }
+  if (!document.getElementById('gio_vao').value) {
+    showToast('⚠️ Vui lòng điền Giờ vào!', true); return;
+  }
+  if (!document.getElementById('gio_ra').value) {
+    showToast('⚠️ Vui lòng điền Giờ ra!', true); return;
   }
 
   // Validate backdate
@@ -506,13 +517,36 @@ function submitForm() {
     }
   }
 
-  // Validate diễn giải
-  for (const id of ['bs_dienGiai','kho_dienGiai','date_dienGiai','bt_dienGiai']) {
-    if (!document.getElementById(id).value.trim()) { showToast('⚠️ Điền đầy đủ tất cả ô Diễn giải!', true); return; }
+  // Validate diễn giải: section 1 & 2 (Basic Store + Kho) — tối thiểu 100 ký tự thực, tối đa 5 dòng
+  const dienGiaiRules = [
+    { id: 'bs_dienGiai',   label: 'Diễn giải Basic Store', minChar: 100, maxLines: 5 },
+    { id: 'kho_dienGiai',  label: 'Diễn giải Tồn kho',     minChar: 100, maxLines: 5 },
+    { id: 'date_dienGiai', label: 'Diễn giải Số date',     minChar: 0,   maxLines: 0 },
+    { id: 'bt_dienGiai',   label: 'Diễn giải Bất thường',  minChar: 0,   maxLines: 0 },
+  ];
+  for (const rule of dienGiaiRules) {
+    const raw = document.getElementById(rule.id).value;
+    const text = raw.trim();
+    if (!text) { showToast(`⚠️ Vui lòng điền: ${rule.label}!`, true); return; }
+    if (rule.minChar > 0) {
+      const actualChars = text.replace(/\s+/g, '').length; // đếm ký tự không tính khoảng trắng
+      if (actualChars < rule.minChar) {
+        showToast(`⚠️ ${rule.label} cần ít nhất ${rule.minChar} ký tự (hiện có ${actualChars})!`, true); return;
+      }
+    }
+    if (rule.maxLines > 0) {
+      const nonEmptyLines = text.split('\n').filter(l => l.trim().length > 0).length;
+      if (nonEmptyLines > rule.maxLines) {
+        showToast(`⚠️ ${rule.label} tối đa ${rule.maxLines} dòng (hiện có ${nonEmptyLines} dòng)!`, true); return;
+      }
+    }
   }
 
-  // Check GPS lần 2 khi submit (nếu bắt định vị)
-  const needGeo = APP_CONFIG['Bắt định vị 100m'] && ch.lat && ch.lng && !isNaN(parseFloat(ch.lat));
+  // Check GPS lần 2 khi submit
+  const geoLimit = typeof APP_CONFIG['Khoảng cách định vị (m)'] === 'number'
+    ? APP_CONFIG['Khoảng cách định vị (m)']
+    : (APP_CONFIG['Bắt định vị 100m'] ? 100 : 0);
+  const needGeo = geoLimit > 0 && ch.lat && ch.lng && !isNaN(parseFloat(ch.lat));
   if (needGeo) {
     const btn = document.getElementById('btn_submit');
     btn.disabled=true; btn.textContent='📍 Xác nhận vị trí...';
@@ -520,10 +554,10 @@ function submitForm() {
     navigator.geolocation.getCurrentPosition(
       pos => {
         const dist=_haversine(pos.coords.latitude,pos.coords.longitude,parseFloat(ch.lat),parseFloat(ch.lng));
-        if (dist>100) {
+        if (dist > geoLimit) {
           btn.disabled=false; btn.textContent='✅ Gửi báo cáo kiểm tra';
           setGeoStatus('error', `❌ Vị trí lệch ${Math.round(dist)}m — không thể gửi!`);
-          showToast(`❌ Vị trí lệch ${Math.round(dist)}m (tối đa 100m)!`, true);
+          showToast(`❌ Vị trí lệch ${Math.round(dist)}m (tối đa ${geoLimit}m)!`, true);
           return;
         }
         setGeoStatus('ok', `✅ Xác nhận vị trí OK — cách ${Math.round(dist)}m`);
