@@ -520,7 +520,7 @@ function submitForm() {
   // Validate diễn giải: section 1 & 2 (Basic Store + Kho) — tối thiểu 100 ký tự thực, tối đa 5 dòng
   const dienGiaiRules = [
     { id: 'bs_dienGiai',   label: 'Diễn giải Basic Store', minChar: 100, maxLines: 5 },
-    { id: 'kho_dienGiai',  label: 'Diễn giải Tồn kho',     minChar: 100, maxLines: 5 },
+    { id: 'kho_dienGiai',  label: 'Diễn giải Tồn kho',     minChar: 50,  maxLines: 5 },
     { id: 'date_dienGiai', label: 'Diễn giải Số date',     minChar: 0,   maxLines: 0 },
     { id: 'bt_dienGiai',   label: 'Diễn giải Bất thường',  minChar: 0,   maxLines: 0 },
   ];
